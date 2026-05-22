@@ -1,14 +1,9 @@
-Your polished, developer-ready `README.md` markdown file is ready for your repository.
-[file-tag: code-generated-file-0-1779403901207877637]
 
-The markdown text below links explicitly to your live GitHub Pages URL and professionally breaks down the urban planning metrics, data dictionary, and features built into your application:
-
-```markdown
 # Sunset Heights Parking Prevalence Dashboard (SHPA)
   
 An interactive urban planning dashboard analyzing the prevalence and commonness of off-street parking configurations within the historic **Sunset Heights Neighborhood** in El Paso, Texas.
 
-🚀 **[View the Live Interactive Dashboard Here](https://hoffmanap.github.io/SHPA/)**
+🚀 **[👉 Click Here to Open the Interactive Dashboard](https://your-github-username.github.io/your-repository-name/dashboard/)**
 
 ---
 
