@@ -3,7 +3,7 @@
   
 An interactive urban planning dashboard analyzing the prevalence and commonness of off-street parking configurations within the historic **Sunset Heights Neighborhood** in El Paso, Texas.
 
-🚀 **[👉 Click Here to Open the Interactive Dashboard](https://your-github-username.github.io/SHPA/dashboard/)**
+🚀 **[👉 Click Here to Open the Interactive Dashboard](https://github.com/hoffmanap/SHPA/blob/main/dashboard/index.html/)**
 
 ---
 
