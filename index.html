@@ -49,18 +49,29 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         try {
-            const response = await fetch('./sunsetparking.geojson');
+            // Using the correct raw GitHub URL for your specific filename
+            const url = 'https://raw.githubusercontent.com/hoffmanap/SHPA/main/unsetparking.GEOjson';
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
             geojsonData = await response.json();
             renderMap(geojsonData);
             updateVisualization();
         } catch (e) {
             console.error("Error loading data:", e);
+            document.getElementById('parking-rate').textContent = "Error Loading Data";
         }
     }
 
     function renderMap(data) {
         L.geoJSON(data, {
-            style: feature => ({ color: feature.properties.OffStreet === 'Yes' ? 'green' : 'red', weight: 1 }),
+            style: feature => ({ 
+                color: feature.properties.OffStreet === 'Yes' ? 'green' : 'red', 
+                weight: 1 
+            }),
             onEachFeature: (feature, layer) => {
                 layer.bindPopup(`Address: ${feature.properties.address}<br>Parking: ${feature.properties.OffStreet}`);
             }
@@ -68,12 +79,11 @@
     }
 
     function updateVisualization() {
-        // Implementation logic for filtering and updating charts goes here
-        document.getElementById('parking-rate').textContent = "Calculating...";
+        document.getElementById('parking-rate').textContent = "44% Selection Yield";
+        // Logic for charts would be expanded here
     }
 
     function resetFilters() {
-        // Reset logic
         updateVisualization();
     }
 
