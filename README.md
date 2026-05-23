@@ -12,7 +12,7 @@ An interactive urban planning dashboard analyzing the prevalence and commonness 
 This tool maps, filters, and visualizes urban parcel metrics to evaluate how off-street parking capacity intersects with architectural eras, residential unit density, and underlying zoning regulations. Understanding these patterns is key to assessing local development feasibility and auditing municipal zoning constraints (such as parking minimums).
 
 The dynamic client-side application integrates a spatial geospatial interface with responsive charting elements, providing a unified platform to splice architectural and parking data metrics.
-
+ 
 ---
 
 ## 🛠️ Key Dashboard Features
