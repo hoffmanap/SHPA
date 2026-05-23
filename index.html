@@ -2,36 +2,51 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sunset Heights Parking Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #map { height: 100vh; width: 100%; }
+        .legend { background: white; padding: 10px; border-radius: 5px; box-shadow: 0 0 15px rgba(0,0,0,0.2); }
+    </style>
 </head>
 <body class="bg-gray-100">
-    <div id="map" class="h-screen w-full"></div>
+
+    <div id="map"></div>
 
     <script>
-        // Initialize Map
-        const map = L.map('map').setView([31.7635, -106.4900], 15);
+        // Initialize Map centered on Sunset Heights
+        const map = L.map('map').setView([31.7635, -106.4900], 16);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        // Fetch Data
-        fetch('sunsetparking.GEOjson')
-            .then(response => response.json())
-            .then(data => {
-                // FIXED DATA LOOP
-                data.features.forEach(function(feature) {
-                    // Safety Check: Verify geometry exists before processing
-                    if (!feature.geometry || !feature.geometry.coordinates || feature.geometry.coordinates.length === 0) {
-                        console.warn("Skipping feature with invalid geometry:", feature);
-                        return; // Skip this record
-                    }
-
-                    // Proceed with rendering valid features
-                    L.geoJSON(feature).addTo(map);
-                });
+        // Fetch data from root directory
+        fetch('./sunsetparking.geojson')
+            .then(response => {
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                return response.json();
             })
-            .catch(err => console.error("Error loading spatial data:", err));
+            .then(data => {
+                L.geoJSON(data, {
+                    style: function(feature) {
+                        return {
+                            fillColor: feature.properties.OffStreet === 'Y' ? '#10B981' : '#EF4444',
+                            weight: 1,
+                            opacity: 1,
+                            color: 'white',
+                            fillOpacity: 0.7
+                        };
+                    },
+                    onEachFeature: function(feature, layer) {
+                        layer.bindPopup(`Address: ${feature.properties.address || 'N/A'}<br>Parking: ${feature.properties.OffStreet}`);
+                    }
+                }).addTo(map);
+            })
+            .catch(err => {
+                console.error("Dashboard failed to load:", err);
+                alert("Error loading parking data. Ensure 'sunsetparking.geojson' is in the root folder.");
+            });
     </script>
 </body>
 </html>
