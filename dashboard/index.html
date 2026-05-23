@@ -19,7 +19,7 @@
             height: 100vh;
         }
         #sidebar {
-            width: 400px;
+            width: 450px;
             background: #f4f6f8;
             padding: 20px;
             overflow-y: auto;
@@ -41,9 +41,10 @@
             border: 1px solid #ccc;
         }
         .chart-container {
+            position: relative;
             margin-top: 20px;
             width: 100%;
-            height: 220px;
+            height: 250px;
         }
         h2 { 
             font-size: 1.4em; 
@@ -66,38 +67,38 @@
 
         <div class="filter-group">
             <label for="zoningFilter"><strong>Zoning</strong></label>
-            <select id="zoningFilter">
+            <select id="zoningFilter" onchange="applyFilters()">
                 <option value="all">All Zoning Types</option>
-                </select>
+            </select>
         </div>
         
         <div class="filter-group">
             <label for="useFilter"><strong>Building Use (LBCS)</strong></label>
-            <select id="useFilter">
+            <select id="useFilter" onchange="applyFilters()">
                 <option value="all">All Building Uses</option>
-                </select>
+            </select>
         </div>
 
         <div class="filter-group">
             <label for="offStreetFilter"><strong>Off-Street Parking</strong></label>
-            <select id="offStreetFilter">
+            <select id="offStreetFilter" onchange="applyFilters()">
                 <option value="all">All Properties</option>
                 <option value="Yes">Has Off-Street Parking</option>
                 <option value="No">No Off-Street Parking</option>
             </select>
         </div>
 
-        <h3>Parking by Zoning</h3>
+        <h3>Parking Prevalence by Zoning (%)</h3>
         <div class="chart-container">
             <canvas id="zoningChart"></canvas>
         </div>
 
-        <h3>Parking by Decade Built</h3>
+        <h3>Parking Prevalence by Decade Built (%)</h3>
         <div class="chart-container">
             <canvas id="decadeChart"></canvas>
         </div>
         
-        <h3>Parking by Building Use</h3>
+        <h3>Parking Prevalence by Building Use (%)</h3>
         <div class="chart-container">
             <canvas id="useChart"></canvas>
         </div>
@@ -106,93 +107,196 @@
     <div id="map"></div>
 
     <script>
-        // 1. Initialize Map centered on El Paso, TX (Sunset Heights approx)
+        // 1. Initialize Map
         const map = L.map('map').setView([31.7619, -106.4850], 15);
-
-        // Add Base Map Tile Layer
         L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
-            subdomains: 'abcd',
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
             maxZoom: 20
         }).addTo(map);
 
         let geojsonLayer;
+        let masterData = []; // Store raw features for filtering
+        let charts = {}; // Store chart instances
 
-        // 2. Data Fetching and Initialization (WITH NULL-VALUE SAFETY WRAPPER)
+        // Helper: Get Decade from Year
+        function getDecade(year) {
+            if (!year) return "Unknown";
+            const y = parseInt(year);
+            if (isNaN(y)) return "Unknown";
+            return Math.floor(y / 10) * 10 + "s";
+        }
+
+        // 2. Data Fetching
         fetch('sunsetparking.GEOjson')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error("HTTP error " + response.status);
-                }
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
+                // Safety filter: ensure geometry and properties exist to avoid crashes
+                masterData = data.features.filter(f => f && f.properties);
                 
-                // Initialize the map layer
-                geojsonLayer = L.geoJSON(data, {
-                    style: function (feature) {
-                        // SAFETY WRAPPER: Check if properties exist to prevent TypeError
-                        if (!feature || !feature.properties) return {};
-
-                        // Provide fallback values if data is null
-                        const hasParking = feature.properties.OffStreet || "No";
-
-                        // Color coding based on off-street parking
-                        let fillColor = hasParking === "Yes" ? "#2ecc71" : "#e74c3c";
-
-                        return {
-                            fillColor: fillColor,
-                            weight: 1,
-                            opacity: 1,
-                            color: 'white',
-                            fillOpacity: 0.7
-                        };
-                    },
-                    onEachFeature: function (feature, layer) {
-                        if (feature.properties) {
-                            // Fallbacks for popup text
-                            const address = feature.properties.address || "Unknown Address";
-                            const use = feature.properties.lbcs_structure_desc || "Unknown Use";
-                            const zoning = feature.properties.zoning || "Unzoned";
-                            const year = feature.properties.yearbuilt || "Unknown Year";
-                            const parking = feature.properties.OffStreet || "No";
-                            const units = feature.properties.ll_address_count || "N/A";
-                            const type = feature.properties.Type || "None";
-                            const curbCut = feature.properties.CurbCut || "No";
-                            
-                            layer.bindPopup(`
-                                <div style="font-family: Arial, sans-serif;">
-                                    <strong>${address}</strong><hr style="margin: 5px 0;">
-                                    <b>Units:</b> ${units}<br>
-                                    <b>Use:</b> ${use}<br>
-                                    <b>Zoning:</b> ${zoning}<br>
-                                    <b>Year Built:</b> ${year}<br>
-                                    <b>Off-Street Parking:</b> ${parking}<br>
-                                    <b>Parking Type:</b> ${type}<br>
-                                    <b>Curb Cut:</b> ${curbCut}
-                                </div>
-                            `);
-                        }
-                    }
-                }).addTo(map);
-
-                // Fit map bounds to the loaded data
-                map.fitBounds(geojsonLayer.getBounds());
-
-                // (Optional for later) 
-                // Call functions here to populate dropdowns and initialize Chart.js 
-                // using the 'data.features' array.
-                // initializeFilters(data.features);
-                // initializeCharts(data.features);
-
+                populateDropdowns(masterData);
+                renderMap(masterData);
+                renderCharts(masterData);
             })
             .catch(error => {
-                console.error("Dashboard Initialization Error:", error);
-                alert("Failed to load map data. Please check the console and ensure you are running a local server.");
+                console.error("Error loading dashboard data:", error);
+                alert("Failed to load map data. Ensure the local server is running in the dashboard folder.");
             });
 
-            // Note: Chart.js initialization code would go below here, 
-            // parsing the 'data.features' array to group and summarize your charts.
+        // 3. Populate Dropdowns
+        function populateDropdowns(features) {
+            const zonings = new Set();
+            const uses = new Set();
+
+            features.forEach(f => {
+                const z = f.properties.zoning;
+                const u = f.properties.lbcs_structure_desc;
+                if (z) zonings.add(z);
+                if (u) uses.add(u);
+            });
+
+            const zoningSelect = document.getElementById('zoningFilter');
+            [...zonings].sort().forEach(z => {
+                let opt = document.createElement('option');
+                opt.value = z; opt.innerHTML = z;
+                zoningSelect.appendChild(opt);
+            });
+
+            const useSelect = document.getElementById('useFilter');
+            [...uses].sort().forEach(u => {
+                let opt = document.createElement('option');
+                opt.value = u; opt.innerHTML = u;
+                useSelect.appendChild(opt);
+            });
+        }
+
+        // 4. Map Rendering
+        function renderMap(features) {
+            if (geojsonLayer) {
+                map.removeLayer(geojsonLayer);
+            }
+
+            geojsonLayer = L.geoJSON(features, {
+                style: function (feature) {
+                    const hasParking = feature.properties.OffStreet || "No";
+                    let fillColor = hasParking === "Yes" ? "#2ecc71" : "#e74c3c"; // Green for Yes, Red for No
+
+                    return {
+                        fillColor: fillColor,
+                        weight: 1,
+                        opacity: 1,
+                        color: 'white',
+                        fillOpacity: 0.7
+                    };
+                },
+                onEachFeature: function (feature, layer) {
+                    const props = feature.properties;
+                    const address = props.address || "Unknown Address";
+                    const use = props.lbcs_structure_desc || "Unknown Use";
+                    const zoning = props.zoning || "Unzoned";
+                    const year = props.yearbuilt || "Unknown Year";
+                    const parking = props.OffStreet || "No";
+                    
+                    layer.bindPopup(`
+                        <div style="font-family: Arial, sans-serif;">
+                            <strong>${address}</strong><hr style="margin: 5px 0;">
+                            <b>Use:</b> ${use}<br>
+                            <b>Zoning:</b> ${zoning}<br>
+                            <b>Year Built:</b> ${year}<br>
+                            <b>Off-Street Parking:</b> ${parking}
+                        </div>
+                    `);
+                }
+            }).addTo(map);
+
+            if (features.length > 0) {
+                map.fitBounds(geojsonLayer.getBounds());
+            }
+        }
+
+        // 5. Chart Processing and Rendering
+        function renderCharts(features) {
+            updateChart('zoningChart', features, f => f.properties.zoning || "Unzoned");
+            updateChart('decadeChart', features, f => getDecade(f.properties.yearbuilt));
+            updateChart('useChart', features, f => f.properties.lbcs_structure_desc || "Unknown Use");
+        }
+
+        function updateChart(canvasId, features, categoryFn) {
+            const stats = {};
+            
+            // Group and Count
+            features.forEach(f => {
+                const category = categoryFn(f);
+                const hasParking = f.properties.OffStreet === "Yes";
+                
+                if (!stats[category]) {
+                    stats[category] = { total: 0, withParking: 0 };
+                }
+                stats[category].total++;
+                if (hasParking) stats[category].withParking++;
+            });
+
+            const labels = Object.keys(stats).sort();
+            const percentages = labels.map(label => {
+                return ((stats[label].withParking / stats[label].total) * 100).toFixed(1);
+            });
+
+            const ctx = document.getElementById(canvasId).getContext('2d');
+
+            if (charts[canvasId]) {
+                charts[canvasId].destroy(); // Destroy previous instance to avoid hover glitch
+            }
+
+            charts[canvasId] = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: '% with Off-Street Parking',
+                        data: percentages,
+                        backgroundColor: '#3498db',
+                        borderColor: '#2980b9',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100,
+                            title: { display: true, text: 'Percentage (%)' }
+                        }
+                    },
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // 6. Filtering Logic
+        function applyFilters() {
+            const selectedZoning = document.getElementById('zoningFilter').value;
+            const selectedUse = document.getElementById('useFilter').value;
+            const selectedOffStreet = document.getElementById('offStreetFilter').value;
+
+            const filteredFeatures = masterData.filter(f => {
+                const z = f.properties.zoning || "Unzoned";
+                const u = f.properties.lbcs_structure_desc || "Unknown Use";
+                const o = f.properties.OffStreet || "No";
+
+                const matchZoning = selectedZoning === "all" || z === selectedZoning;
+                const matchUse = selectedUse === "all" || u === selectedUse;
+                const matchOffStreet = selectedOffStreet === "all" || o === selectedOffStreet;
+
+                return matchZoning && matchUse && matchOffStreet;
+            });
+
+            // Update Map and Charts dynamically
+            renderMap(filteredFeatures);
+            renderCharts(filteredFeatures);
+        }
     </script>
 </body>
 </html>
