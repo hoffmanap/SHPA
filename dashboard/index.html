@@ -3,70 +3,196 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sunset Heights Topographic & Parking Feasibility Hub</title>
+    <title>Sunset Heights Parking Dashboard</title>
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <style>
-        body, html { margin: 0; padding: 0; height: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        #map { height: calc(100vh - 140px); min-height: 400px; }
-        .chart-container { position: relative; height: 210px; width: 100%; }
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        .dual-slider-container { position: relative; height: 20px; margin-top: 10px; }
-        .dual-slider-container input[type="range"] {
-            position: absolute; width: 100%; pointer-events: none; -webkit-appearance: none; z-index: 2; height: 5px; background: none; opacity: 0;
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            height: 100vh;
         }
-        .dual-slider-container input[type="range"]::-webkit-slider-thumb {
-            pointer-events: auto; width: 15px; height: 15px; border-radius: 50%; background: #4f46e5; cursor: pointer; -webkit-appearance: none; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        #sidebar {
+            width: 400px;
+            background: #f4f6f8;
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+            z-index: 1000;
         }
-        .dual-slider-container input[type="range"]::-moz-range-thumb {
-            pointer-events: auto; width: 15px; height: 15px; border-radius: 50%; background: #4f46e5; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        #map {
+            flex-grow: 1;
+            height: 100%;
         }
-        .slider-custom-track {
-            position: absolute; width: 100%; height: 5px; background: #e2e8f0; border-radius: 3px; top: 6px; z-index: 1;
+        .filter-group {
+            margin-bottom: 15px;
+        }
+        select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+        .chart-container {
+            margin-top: 20px;
+            width: 100%;
+            height: 220px;
+        }
+        h2 { 
+            font-size: 1.4em; 
+            color: #2c3e50;
+            border-bottom: 2px solid #3498db; 
+            padding-bottom: 5px; 
+        }
+        h3 { 
+            font-size: 1.1em; 
+            color: #34495e;
+            margin-top: 25px; 
         }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 flex flex-col h-screen overflow-hidden">
+<body>
 
-    <header class="bg-slate-900 text-white px-6 py-4 shadow-md flex justify-between items-center z-10 border-b border-indigo-500/20">
-        <div>
-            <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-300 bg-clip-text text-transparent">Sunset Heights Topographic & Parking Feasibility Hub</h1>
-            <p class="text-xs text-slate-400">Evaluating Urban Grading Challenges, Lot Forms & Access Patterns • El Paso, Texas</p>
-        </div>
-        <div>
-            <span class="text-xs bg-indigo-950 px-3 py-1.5 rounded-full font-medium text-indigo-300 border border-indigo-800 shadow-sm" id="metric-summary">
-                Ingesting Neighborhood Parcels...
-            </span>
-        </div>
-    </header>
+    <div id="sidebar">
+        <h2>Sunset Heights Parking</h2>
+        <p>Interactive dashboard visualizing off-street parking prevalence.</p>
 
-    <div class="flex flex-1 overflow-hidden relative">
+        <div class="filter-group">
+            <label for="zoningFilter"><strong>Zoning</strong></label>
+            <select id="zoningFilter">
+                <option value="all">All Zoning Types</option>
+                </select>
+        </div>
         
-        <aside class="w-96 bg-white shadow-xl flex flex-col z-10 border-r border-slate-200 overflow-y-auto p-5 space-y-5">
-            
-            <div class="bg-gradient-to-br from-slate-900 to-indigo-950 text-white rounded-xl p-4 shadow-md border border-slate-800">
-                <h2 class="text-xs font-bold uppercase tracking-wider text-indigo-400 mb-1.5">Off-Street Capacity Rate</h2>
-                <div class="flex items-baseline space-x-2">
-                    <span class="text-4xl font-extrabold text-white" id="parking-pct">0%</span>
-                    <span class="text-xs font-medium text-slate-400">Selection Yield</span>
-                </div>
-                <div class="w-full bg-slate-800 rounded-full h-2 mt-3 overflow-hidden">
-                    <div id="parking-progress" class="bg-emerald-500 h-2 rounded-full transition-all duration-500" style="width: 0%"></div>
-                </div>
-                <p class="text-[11px] text-slate-400 mt-2 font-medium" id="raw-counts">Processing geometric constraints...</p>
-            </div>
+        <div class="filter-group">
+            <label for="useFilter"><strong>Building Use (LBCS)</strong></label>
+            <select id="useFilter">
+                <option value="all">All Building Uses</option>
+                </select>
+        </div>
 
-            <div class="space-y-4 border-b border-slate-100 pb-5">
-                <div class="flex justify-between items-center">
-                    <h2 class="text-xs font-bold tracking-tight text-slate-900 uppercase">Variable Modifiers</h2>
-                    <button onclick="resetFilters()" class="text-xs text-indigo-
+        <div class="filter-group">
+            <label for="offStreetFilter"><strong>Off-Street Parking</strong></label>
+            <select id="offStreetFilter">
+                <option value="all">All Properties</option>
+                <option value="Yes">Has Off-Street Parking</option>
+                <option value="No">No Off-Street Parking</option>
+            </select>
+        </div>
+
+        <h3>Parking by Zoning</h3>
+        <div class="chart-container">
+            <canvas id="zoningChart"></canvas>
+        </div>
+
+        <h3>Parking by Decade Built</h3>
+        <div class="chart-container">
+            <canvas id="decadeChart"></canvas>
+        </div>
+        
+        <h3>Parking by Building Use</h3>
+        <div class="chart-container">
+            <canvas id="useChart"></canvas>
+        </div>
+    </div>
+
+    <div id="map"></div>
+
+    <script>
+        // 1. Initialize Map centered on El Paso, TX (Sunset Heights approx)
+        const map = L.map('map').setView([31.7619, -106.4850], 15);
+
+        // Add Base Map Tile Layer
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/">CARTO</a>',
+            subdomains: 'abcd',
+            maxZoom: 20
+        }).addTo(map);
+
+        let geojsonLayer;
+
+        // 2. Data Fetching and Initialization (WITH NULL-VALUE SAFETY WRAPPER)
+        fetch('sunsetparking.GEOjson')
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("HTTP error " + response.status);
+                }
+                return response.json();
+            })
+            .then(data => {
+                
+                // Initialize the map layer
+                geojsonLayer = L.geoJSON(data, {
+                    style: function (feature) {
+                        // SAFETY WRAPPER: Check if properties exist to prevent TypeError
+                        if (!feature || !feature.properties) return {};
+
+                        // Provide fallback values if data is null
+                        const hasParking = feature.properties.OffStreet || "No";
+
+                        // Color coding based on off-street parking
+                        let fillColor = hasParking === "Yes" ? "#2ecc71" : "#e74c3c";
+
+                        return {
+                            fillColor: fillColor,
+                            weight: 1,
+                            opacity: 1,
+                            color: 'white',
+                            fillOpacity: 0.7
+                        };
+                    },
+                    onEachFeature: function (feature, layer) {
+                        if (feature.properties) {
+                            // Fallbacks for popup text
+                            const address = feature.properties.address || "Unknown Address";
+                            const use = feature.properties.lbcs_structure_desc || "Unknown Use";
+                            const zoning = feature.properties.zoning || "Unzoned";
+                            const year = feature.properties.yearbuilt || "Unknown Year";
+                            const parking = feature.properties.OffStreet || "No";
+                            const units = feature.properties.ll_address_count || "N/A";
+                            const type = feature.properties.Type || "None";
+                            const curbCut = feature.properties.CurbCut || "No";
+                            
+                            layer.bindPopup(`
+                                <div style="font-family: Arial, sans-serif;">
+                                    <strong>${address}</strong><hr style="margin: 5px 0;">
+                                    <b>Units:</b> ${units}<br>
+                                    <b>Use:</b> ${use}<br>
+                                    <b>Zoning:</b> ${zoning}<br>
+                                    <b>Year Built:</b> ${year}<br>
+                                    <b>Off-Street Parking:</b> ${parking}<br>
+                                    <b>Parking Type:</b> ${type}<br>
+                                    <b>Curb Cut:</b> ${curbCut}
+                                </div>
+                            `);
+                        }
+                    }
+                }).addTo(map);
+
+                // Fit map bounds to the loaded data
+                map.fitBounds(geojsonLayer.getBounds());
+
+                // (Optional for later) 
+                // Call functions here to populate dropdowns and initialize Chart.js 
+                // using the 'data.features' array.
+                // initializeFilters(data.features);
+                // initializeCharts(data.features);
+
+            })
+            .catch(error => {
+                console.error("Dashboard Initialization Error:", error);
+                alert("Failed to load map data. Please check the console and ensure you are running a local server.");
+            });
+
+            // Note: Chart.js initialization code would go below here, 
+            // parsing the 'data.features' array to group and summarize your charts.
+    </script>
+</body>
+</html>
