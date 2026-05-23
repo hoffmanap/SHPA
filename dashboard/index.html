@@ -2,308 +2,36 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sunset Heights Parking & Feasibility Dashboard</title>
-
+    <title>Sunset Heights Parking Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-    <script src="https://cdn.tailwindcss.com"></script>
-
-    <style>
-        body { margin: 0; padding: 0; background-color: #f3f4f6; }
-        #map { height: 100%; width: 100%; border-radius: 0.5rem; }
-        /* Adjusted height to fit standard laptop screens */
-        .chart-container { position: relative; height: 180px; width: 100%; }
-    </style>
 </head>
-<body class="flex flex-col h-screen">
-
-    <header class="bg-blue-900 text-white p-4 shadow-md z-10">
-        <h1 class="text-2xl font-bold">Sunset Heights Parking Prevalence Dashboard</h1>
-        <p class="text-sm text-blue-200">Interactive spatial analysis of off-street parking capacity and policy levers.</p>
-    </header>
-
-    <div class="flex flex-1 overflow-hidden">
-        
-        <aside class="w-80 bg-white p-4 shadow-lg overflow-y-auto flex flex-col gap-4 z-10">
-            <h2 class="text-lg font-bold border-b pb-2">Data Filters</h2>
-            
-            <div>
-                <label class="block text-sm font-semibold mb-1">Region (Auto-Calculated)</label>
-                <select id="filter-region" class="w-full border rounded p-2 text-sm" onchange="updateDashboard()">
-                    <option value="All">All Regions</option>
-                    <option value="North">North</option>
-                    <option value="South">South</option>
-                    <option value="Unknown">Unknown</option>
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-semibold mb-1">Topography (Auto-Calculated)</label>
-                <select id="filter-topography" class="w-full border rounded p-2 text-sm" onchange="updateDashboard()">
-                    <option value="All">All Topography</option>
-                    <option value="At Grade">At Grade</option>
-                    <option value="Steep Cliffs">Steep Cliffs</option>
-                    <option value="Unknown">Unknown</option>
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-semibold mb-1">Zoning</label>
-                <select id="filter-zoning" class="w-full border rounded p-2 text-sm" onchange="updateDashboard()">
-                    <option value="All">All Zoning</option>
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-semibold mb-1">Building Use</label>
-                <select id="filter-use" class="w-full border rounded p-2 text-sm" onchange="updateDashboard()">
-                    <option value="All">All Uses</option>
-                </select>
-            </div>
-
-            <div>
-                <label class="block text-sm font-semibold mb-1">Has Off-Street Parking?</label>
-                <select id="filter-offstreet" class="w-full border rounded p-2 text-sm" onchange="updateDashboard()">
-                    <option value="All">Show All</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                </select>
-            </div>
-            
-            <div class="mt-auto pt-4 border-t">
-                <div class="text-center p-3 bg-blue-100 rounded">
-                    <h3 class="text-sm font-bold text-blue-800">Filtered Properties</h3>
-                    <p id="property-count" class="text-2xl font-bold text-blue-900">0</p>
-                </div>
-            </div>
-        </aside>
-
-        <main class="flex-1 p-4">
-            <div class="h-full w-full bg-gray-300 rounded-lg shadow-inner flex items-center justify-center">
-                <div id="map"></div>
-            </div>
-        </main>
-
-        <aside class="w-96 bg-white p-4 shadow-lg overflow-y-auto flex flex-col gap-6 z-10">
-            <h2 class="text-lg font-bold border-b pb-2">Parking Analytics</h2>
-            <p class="text-xs text-gray-500 mb-2">Percentage of properties with off-street parking based on active filters.</p>
-            
-            <div class="chart-container">
-                <canvas id="zoningChart"></canvas>
-            </div>
-            
-            <div class="chart-container">
-                <canvas id="useChart"></canvas>
-            </div>
-
-            <div class="chart-container">
-                <canvas id="decadeChart"></canvas>
-            </div>
-        </aside>
-
-    </div>
+<body class="bg-gray-100">
+    <div id="map" class="h-screen w-full"></div>
 
     <script>
         // Initialize Map
-        const map = L.map('map').setView([31.7635, -106.5015], 15);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-        }).addTo(map);
+        const map = L.map('map').setView([31.7635, -106.4900], 15);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
-        let geojsonLayer;
-        let chartZoning, chartUse, chartDecade;
-
-        // Fetch Data & Inject Spatial Math
-        fetch('sunsetparking.GEOjson')
+        // Fetch Data
+        fetch('sunsetparking.geojson')
             .then(response => response.json())
             .then(data => {
-                
-                // 1. DYNAMIC SPATIAL CALCULATION (With Safety Check)
-                data.features.forEach(feature => {
-                    
-                    // Safety check for empty geometry
-                    if (!feature.geometry) {
-                        feature.properties.region = "Unknown";
-                        feature.properties.topography = "Unknown";
-                        return; 
+                // FIXED DATA LOOP
+                data.features.forEach(function(feature) {
+                    // Safety Check: Verify geometry exists before processing
+                    if (!feature.geometry || !feature.geometry.coordinates || feature.geometry.coordinates.length === 0) {
+                        console.warn("Skipping feature with invalid geometry:", feature);
+                        return; // Skip this record
                     }
 
-                    let lat = 0, lng = 0;
-                    
-                    // Extract coordinates
-                    if (feature.geometry.type === "Point") {
-                        lng = feature.geometry.coordinates[0];
-                        lat = feature.geometry.coordinates[1];
-                    } else if (feature.geometry.type === "Polygon" || feature.geometry.type === "MultiPolygon") {
-                        let coords = feature.geometry.type === "Polygon" ? 
-                                     feature.geometry.coordinates[0][0] : 
-                                     feature.geometry.coordinates[0][0][0];
-                        lng = coords[0];
-                        lat = coords[1];
-                    }
-
-                    // Region & Topography Math
-                    feature.properties.region = (lat >= 31.7635) ? "North" : "South";
-                    feature.properties.topography = (lng <= -106.5015) ? "Steep Cliffs" : "At Grade";
+                    // Proceed with rendering valid features
+                    L.geoJSON(feature).addTo(map);
                 });
-
-                window.dashboardData = data; 
-                
-                // 2. Populate Dropdown Menus
-                populateDropdowns(data.features);
-
-                // 3. Initialize Map Layer
-                geojsonLayer = L.geoJSON(data, {
-                    style: function(feature) {
-                        return {
-                            color: feature.properties.OffStreet === "Yes" ? "#10b981" : "#ef4444",
-                            weight: 1,
-                            fillOpacity: 0.6
-                        };
-                    },
-                    onEachFeature: function(feature, layer) {
-                        let props = feature.properties;
-                        layer.bindPopup(`
-                            <div class="text-sm">
-                                <b class="text-lg">${props.address || 'Unknown Address'}</b><br>
-                                <b>Region:</b> ${props.region}<br>
-                                <b>Topography:</b> ${props.topography}<br>
-                                <b>Zoning:</b> ${props.zoning || 'N/A'}<br>
-                                <b>Use:</b> ${props.lbcs_structure_desc || 'N/A'}<br>
-                                <b>Year Built:</b> ${props.yearbuilt || 'N/A'}<br>
-                                <b>Off-Street Parking:</b> ${props.OffStreet || 'No'}
-                            </div>
-                        `);
-                    }
-                }).addTo(map);
-                
-                // 4. Initialize Charts and Trigger First Update
-                initCharts();
-                updateDashboard();
             })
-            .catch(error => {
-                console.error("Error loading spatial data:", error);
-                alert("Failed to load sunsetparking.GEOjson. Ensure the file is in the same directory.");
-            });
-
-        // ==========================================
-        // Helper Functions & Dashboard Logic
-        // ==========================================
-
-        function populateDropdowns(features) {
-            let zonings = new Set();
-            let uses = new Set();
-            
-            features.forEach(f => {
-                if(f.properties.zoning) zonings.add(f.properties.zoning);
-                if(f.properties.lbcs_structure_desc) uses.add(f.properties.lbcs_structure_desc);
-            });
-
-            const zoningSelect = document.getElementById('filter-zoning');
-            Array.from(zonings).sort().forEach(z => {
-                zoningSelect.add(new Option(z, z));
-            });
-
-            const useSelect = document.getElementById('filter-use');
-            Array.from(uses).sort().forEach(u => {
-                useSelect.add(new Option(u, u));
-            });
-        }
-
-        function updateDashboard() {
-            if (!window.dashboardData) return;
-
-            // Get Filter Values
-            const regionVal = document.getElementById('filter-region').value;
-            const topoVal = document.getElementById('filter-topography').value;
-            const zoningVal = document.getElementById('filter-zoning').value;
-            const useVal = document.getElementById('filter-use').value;
-            const offstreetVal = document.getElementById('filter-offstreet').value;
-
-            // Filter Data
-            let filteredFeatures = window.dashboardData.features.filter(f => {
-                let p = f.properties;
-                let matchRegion = (regionVal === "All") || (p.region === regionVal);
-                let matchTopo = (topoVal === "All") || (p.topography === topoVal);
-                let matchZoning = (zoningVal === "All") || (p.zoning === zoningVal);
-                let matchUse = (useVal === "All") || (p.lbcs_structure_desc === useVal);
-                let matchOffstreet = (offstreetVal === "All") || (p.OffStreet === offstreetVal);
-                
-                return matchRegion && matchTopo && matchZoning && matchUse && matchOffstreet;
-            });
-
-            // Update Map
-            geojsonLayer.clearLayers();
-            geojsonLayer.addData(filteredFeatures);
-            document.getElementById('property-count').innerText = filteredFeatures.length;
-
-            // Update Charts
-            updateChartsData(filteredFeatures);
-        }
-
-        function initCharts() {
-            const commonOptions = {
-                responsive: true, maintainAspectRatio: false,
-                scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: '% with Parking' } } },
-                plugins: { legend: { display: false } }
-            };
-
-            chartZoning = new Chart(document.getElementById('zoningChart'), {
-                type: 'bar', data: { labels: [], datasets: [{ data: [], backgroundColor: '#3b82f6' }] },
-                options: { ...commonOptions, plugins: { title: { display: true, text: 'Parking by Zoning' }, legend: {display: false} } }
-            });
-
-            chartUse = new Chart(document.getElementById('useChart'), {
-                type: 'bar', data: { labels: [], datasets: [{ data: [], backgroundColor: '#10b981' }] },
-                options: { ...commonOptions, plugins: { title: { display: true, text: 'Parking by Building Use' }, legend: {display: false} } }
-            });
-
-            chartDecade = new Chart(document.getElementById('decadeChart'), {
-                type: 'bar', data: { labels: [], datasets: [{ data: [], backgroundColor: '#f59e0b' }] },
-                options: { ...commonOptions, plugins: { title: { display: true, text: 'Parking by Decade Built' }, legend: {display: false} } }
-            });
-        }
-
-        function updateChartsData(features) {
-            // Helper to calculate percentage of parking = "Yes" per category
-            function calculatePercentages(propertyKey, isDecade = false) {
-                let counts = {};
-                features.forEach(f => {
-                    let key = f.properties[propertyKey];
-                    if (isDecade && key) {
-                        key = Math.floor(key / 10) * 10 + "s"; // e.g. 1950s
-                    }
-                    if (!key) key = "Unknown";
-                    
-                    if (!counts[key]) counts[key] = { total: 0, hasParking: 0 };
-                    counts[key].total++;
-                    if (f.properties.OffStreet === "Yes") counts[key].hasParking++;
-                });
-
-                let labels = Object.keys(counts).sort();
-                let data = labels.map(label => Math.round((counts[label].hasParking / counts[label].total) * 100));
-                return { labels, data };
-            }
-
-            let zoningData = calculatePercentages('zoning');
-            chartZoning.data.labels = zoningData.labels;
-            chartZoning.data.datasets[0].data = zoningData.data;
-            chartZoning.update();
-
-            let useData = calculatePercentages('lbcs_structure_desc');
-            chartUse.data.labels = useData.labels;
-            chartUse.data.datasets[0].data = useData.data;
-            chartUse.update();
-
-            let decadeData = calculatePercentages('yearbuilt', true);
-            chartDecade.data.labels = decadeData.labels;
-            chartDecade.data.datasets[0].data = decadeData.data;
-            chartDecade.update();
-        }
+            .catch(err => console.error("Error loading spatial data:", err));
     </script>
 </body>
 </html>
