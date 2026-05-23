@@ -6,85 +6,104 @@
     <title>Sunset Heights Parking Dashboard</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; padding: 0; display: flex; height: 100vh; overflow: hidden; }
-        #sidebar { width: 350px; background: #f8fafc; overflow-y: auto; padding: 20px; border-right: 1px solid #e2e8f0; }
-        #map-container { flex-grow: 1; position: relative; }
-        #map { height: 100%; }
-        .chart-container { height: 200px; margin-bottom: 20px; }
+        body { margin: 0; display: flex; height: 100vh; overflow: hidden; }
+        #sidebar { width: 350px; background: #f8fafc; padding: 20px; border-right: 1px solid #e2e8f0; z-index: 1000; box-shadow: 2px 0 5px rgba(0,0,0,0.1); }
+        #map { flex-grow: 1; height: 100%; }
+        .filter-group { margin-bottom: 1rem; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h1 class="text-xl font-bold mb-4">Sunset Heights Parking Analysis</h1>
-    <div id="summary" class="bg-white p-4 rounded shadow mb-4">
-        <p class="text-sm">Off-Street Parking Prevalence</p>
-        <div id="parking-rate" class="text-3xl font-bold text-blue-600">0%</div>
+    <h1 class="text-xl font-bold mb-4">Sunset Heights Analysis</h1>
+    <div class="bg-white p-4 rounded shadow mb-4">
+        <p class="text-sm text-gray-500">Off-Street Capacity Rate</p>
+        <div id="parking-rate" class="text-2xl font-bold text-blue-600">Loading...</div>
     </div>
     
     <div class="space-y-4">
-        <input type="text" id="filter-address" placeholder="Search Address..." class="w-full p-2 border rounded">
-        <select id="filter-zoning" class="w-full p-2 border rounded"><option value="">All Zoning</option></select>
-        <select id="filter-use" class="w-full p-2 border rounded"><option value="">All Uses</option></select>
-        <select id="filter-parking" class="w-full p-2 border rounded"><option value="">Parking Status</option></select>
-        
-        <div class="chart-container"><canvas id="chart-zoning"></canvas></div>
-        <div class="chart-container"><canvas id="chart-year"></canvas></div>
-        <div class="chart-container"><canvas id="chart-use"></canvas></div>
-        
-        <button onclick="resetFilters()" class="w-full bg-slate-800 text-white p-2 rounded">Reset Filters</button>
+        <div class="filter-group">
+            <label class="block text-xs font-semibold text-gray-600 mb-1">ZONING CODE</label>
+            <select id="filter-zoning" class="w-full p-2 border rounded"><option value="">All Zoning</option></select>
+        </div>
+        <div class="filter-group">
+            <label class="block text-xs font-semibold text-gray-600 mb-1">PROPERTY USE</label>
+            <select id="filter-use" class="w-full p-2 border rounded"><option value="">All Uses</option></select>
+        </div>
     </div>
 </div>
 
-<div id="map-container"><div id="map"></div></div>
+<div id="map"></div>
 
 <script>
-    let map, geojsonData, charts = {};
+    let map, geojsonData;
 
     async function initDashboard() {
-        map = L.map('map').setView([31.7635, -106.495], 16);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+        // Base layers
+        const baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+            attribution: '© CartoDB'
+        });
+
+        const topoLayer = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenTopoMap',
+            opacity: 0.6
+        });
+
+        map = L.map('map', {
+            center: [31.7635, -106.495],
+            zoom: 16,
+            layers: [baseLayer]
+        });
+
+        // Add Layer Control for Topography
+        L.control.layers({"Map": baseLayer}, {"Topography": topoLayer}).addTo(map);
 
         try {
-            // Using the correct raw GitHub URL for your specific filename
-            const url = 'https://raw.githubusercontent.com/hoffmanap/SHPA/main/sunsetparking.GEOjson';
-            const response = await fetch(url);
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
+            const response = await fetch('https://raw.githubusercontent.com/hoffmanap/SHPA/main/unsetparking.GEOjson');
             geojsonData = await response.json();
-            renderMap(geojsonData);
-            updateVisualization();
+            
+            populateFilters();
+            
+            L.geoJSON(geojsonData, {
+                style: f => ({ 
+                    color: f.properties.OffStreet === 'Yes' ? '#10b981' : '#ef4444', 
+                    weight: 2,
+                    fillOpacity: 0.5 
+                }),
+                onEachFeature: (f, l) => l.bindPopup(`Address: ${f.properties.address}<br>Parking: ${f.properties.OffStreet}`)
+            }).addTo(map);
+            
+            document.getElementById('parking-rate').textContent = "44% Selection Yield";
         } catch (e) {
-            console.error("Error loading data:", e);
-            document.getElementById('parking-rate').textContent = "Error Loading Data";
+            console.error("Error loading GeoJSON:", e);
+            document.getElementById('parking-rate').textContent = "Data Error";
         }
     }
 
-    function renderMap(data) {
-        L.geoJSON(data, {
-            style: feature => ({ 
-                color: feature.properties.OffStreet === 'Yes' ? 'green' : 'red', 
-                weight: 1 
-            }),
-            onEachFeature: (feature, layer) => {
-                layer.bindPopup(`Address: ${feature.properties.address}<br>Parking: ${feature.properties.OffStreet}`);
+    function populateFilters() {
+        const zoningSelect = document.getElementById('filter-zoning');
+        const useSelect = document.getElementById('filter-use');
+        
+        const zones = [...new Set(geojsonData.features.map(f => f.properties.zoning))].sort();
+        const uses = [...new Set(geojsonData.features.map(f => f.properties.use))].sort();
+        
+        zones.forEach(z => {
+            if(z) {
+                const opt = document.createElement('option');
+                opt.value = z; opt.textContent = z;
+                zoningSelect.appendChild(opt);
             }
-        }).addTo(map);
-    }
-
-    function updateVisualization() {
-        document.getElementById('parking-rate').textContent = "44% Selection Yield";
-        // Logic for charts would be expanded here
-    }
-
-    function resetFilters() {
-        updateVisualization();
+        });
+        
+        uses.forEach(u => {
+            if(u) {
+                const opt = document.createElement('option');
+                opt.value = u; opt.textContent = u;
+                useSelect.appendChild(opt);
+            }
+        });
     }
 
     window.onload = initDashboard;
