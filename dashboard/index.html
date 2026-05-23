@@ -136,15 +136,11 @@
                 <div class="space-y-3 text-[11px] text-slate-600 leading-relaxed overflow-y-auto pr-1">
                     <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                         <strong class="text-slate-800 block mb-0.5">The Ridge Preclusion Effect</strong>
-                        Parcels along steep escarpments exceeding 30ft of internal elevation delta show an extreme deficit in off-street setups. Natural historic slopes physically barred grading corridors or cost-effective garage installation patterns.
+                        Parcels along steep escarpments exceeding 30ft of internal elevation delta show an extreme deficit in off-street setups.
                     </div>
                     <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
                         <strong class="text-slate-800 block mb-0.5">The 5,000 SqFt Gatekeeper</strong>
-                        Total lot area behaves as a direct mathematical proxy for width. Sub-standard lots below 3,500 sqft exhibit only a 18.9% off-street deployment rate due to structural constraints preventing side-yard facade drive access.
-                    </div>
-                    <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-100">
-                        <strong class="text-slate-800 block mb-0.5">Missing-Middle Space Conflicts</strong>
-                        While duplexes and triplexes successfully route rear configurations via flat parallel alleys, small-scale multi-unit housing (4-8 units) on sub-5,000 sqft envelopes experiences an outright capacity collapse (0% yield), proving parking mandates block infill density.
+                        Total lot area behaves as a width proxy. Sub-standard configurations below 3,500 sqft exhibit only a 18.9% off-street deployment rate.
                     </div>
                 </div>
             </div>
@@ -154,79 +150,57 @@
             <div id="map" class="w-full flex-1"></div>
             
             <div class="h-[260px] bg-white border-t border-slate-200 p-4 grid grid-cols-3 gap-4 shadow-inner">
-                
                 <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex flex-col justify-between">
                     <h3 class="text-xs font-bold text-slate-700 tracking-tight text-center uppercase mb-1">Parking Rate by Slope Profile</h3>
-                    <div class="chart-container flex-1">
-                        <canvas id="chart-slope"></canvas>
-                    </div>
+                    <div class="chart-container flex-1"><canvas id="chart-slope"></canvas></div>
                 </div>
                 
                 <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex flex-col justify-between">
                     <h3 class="text-xs font-bold text-slate-700 tracking-tight text-center uppercase mb-1">Historical Adaptation Timeline</h3>
-                    <div class="chart-container flex-1">
-                        <canvas id="chart-timeline"></canvas>
-                    </div>
+                    <div class="chart-container flex-1"><canvas id="chart-timeline"></canvas></div>
                 </div>
                 
                 <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200 flex flex-col justify-between">
                     <h3 class="text-xs font-bold text-slate-700 tracking-tight text-center uppercase mb-1">Site Parking Typologies Share</h3>
-                    <div class="chart-container flex-1 flex justify-center items-center">
-                        <canvas id="chart-typology"></canvas>
-                    </div>
+                    <div class="chart-container flex-1 flex justify-center items-center"><canvas id="chart-typology"></canvas></div>
                 </div>
             </div>
         </main>
     </div>
 
     <script>
-        // High-fidelity fallback matrix populates map layouts natively if local python compiling is bypassed
+        // FIXED fallback generator loops with .push instead of .append
         function generateFallbackData() {
             const streets = ["W Yandell Dr", "Upson Drive", "N Ochoa St", "Mesa St", "Porfirio Diaz St", "N Oregon St", "Randolph St"];
             const zonings = ["R-4", "A-2", "R-3", "A-3", "C-1"];
             const typologies = ["Surface", "Garage", "None"];
             const features = [];
             
-            // Generate 120 structurally accurate sample blocks bounding Sunset Heights coordinates
-            for (let i = 0; i < 120; i++) {
-                const lat = 31.764 + (Math.random() - 0.5) * 0.012;
-                const lon = -106.501 + (Math.random() - 0.5) * 0.015;
-                const num = Math.floor(Math.random() * 800) + 200;
-                const address = `${num} ${streets[Math.floor(Math.random() * streets.length)]}`;
-                const zoning = zonings[Math.floor(Math.random() * zonings.length)];
-                const year = Math.floor(Math.random() * (2022 - i%3 - 1905)) + 1905;
-                const sqft = Math.floor(Math.random() * 11000) + i*15 + 1200;
+            for (let i = 0; i < 140; i++) {
+                const lat = 31.7645 + (Math.random() - 0.5) * 0.008;
+                const lon = -106.5010 + (Math.random() - 0.5) * 0.010;
+                const address = `${Math.floor(Math.random() * 900) + 100} ${streets[i % streets.length]}`;
+                const zoning = zonings[i % zonings.length];
+                const year = Math.floor(Math.random() * (2022 - 1905)) + 1905;
+                const sqft = Math.floor(Math.random() * 8000) + 2000;
+                const highElev = Math.floor(Math.random() * 100) + 3800;
+                const lowElev = highElev - (Math.floor(Math.random() * 40));
+                const offStreet = Math.random() > 0.4 ? "Y" : "N";
                 
-                // Topographic delta generation sets slope contexts
-                const highElev = Math.floor(Math.random() * 150) + 3800;
-                const lowElev = highElev - (Math.floor(Math.random() * 45) + (i % 5 === 0 ? 25 : 2));
-                
-                const offStreet = Math.random() > (highElev - lowElev > 30 ? 0.75 : 0.3) ? "Y" : "N";
-                const type = offStreet === "Y" ? typologies[Math.floor(Math.random() * 2)] : "None";
-                
-                features.append({
+                features.push({
                     "type": "Feature",
                     "properties": {
-                        "address": address,
-                        "ll_address_count": Math.floor(Math.random() * 3) + 1,
-                        "lbcs_structure_desc": "Residential Structure",
-                        "zoning": zoning,
-                        "yearbuilt": year,
-                        "OffStreet": offStreet,
-                        "Type": type,
-                        "CurbCut": offStreet === "Y" ? "Y" : (Math.random() > 0.5 ? "Y" : "N"),
-                        "highest_parcel_elevation": highElev,
-                        "lowest_parcel_elevation": lowElev,
-                        "ll_gissqft": sqft
+                        "address": address, "zoning": zoning, "yearbuilt": year,
+                        "OffStreet": offStreet, "Type": offStreet === "Y" ? typologies[i % 2] : "None",
+                        "CurbCut": offStreet === "Y" ? "Y" : "N",
+                        "highest_parcel_elevation": highElev, "lowest_parcel_elevation": lowElev, "ll_gissqft": sqft
                     },
                     "geometry": {
                         "type": "Polygon",
                         "coordinates": [[
-                            [lon - 0.0005, lat - 0.0004],
-                            [lon + 0.0005, lat - 0.0004],
-                            [lon + 0.0005, lat + 0.0004],
-                            [lon - 0.0005, lat + 0.0004],
-                            [lon - 0.0005, lat - 0.0004]
+                            [lon - 0.0003, lat - 0.0002], [lon + 0.0003, lat - 0.0002],
+                            [lon + 0.0003, lat + 0.0002], [lon - 0.0003, lat + 0.0002],
+                            [lon - 0.0003, lat - 0.0002]
                         ]]
                     }
                 });
@@ -242,7 +216,6 @@
         const minLotGlobal = 500, maxLotGlobal = 15000;
 
         function processFeatures() {
-            if (!geojsonData.features) geojsonData.features = [];
             geojsonData.features.forEach(f => {
                 const p = f.properties;
                 const delta = (p.highest_parcel_elevation || 0) - (p.lowest_parcel_elevation || 0);
@@ -253,46 +226,30 @@
         }
 
         function controlYearMin() {
-            const minS = document.getElementById('slider-min-year');
-            const maxS = document.getElementById('slider-max-year');
+            const minS = document.getElementById('slider-min-year'); const maxS = document.getElementById('slider-max-year');
             if (parseInt(minS.value) > parseInt(maxS.value) - 4) minS.value = parseInt(maxS.value) - 4;
             document.getElementById('year-range-display').textContent = `${minS.value} - ${maxS.value}`;
-            updateTrack('year-track', minS.value, maxS.value, minYearGlobal, maxYearGlobal);
-            filterData();
+            updateTrack('year-track', minS.value, maxS.value, minYearGlobal, maxYearGlobal); filterData();
         }
-
         function controlYearMax() {
-            const minS = document.getElementById('slider-min-year');
-            const maxS = document.getElementById('slider-max-year');
+            const minS = document.getElementById('slider-min-year'); const maxS = document.getElementById('slider-max-year');
             if (parseInt(maxS.value) < parseInt(minS.value) + 4) maxS.value = parseInt(minS.value) + 4;
             document.getElementById('year-range-display').textContent = `${minS.value} - ${maxS.value}`;
-            updateTrack('year-track', minS.value, maxS.value, minYearGlobal, maxYearGlobal);
-            filterData();
+            updateTrack('year-track', minS.value, maxS.value, minYearGlobal, maxYearGlobal); filterData();
         }
-
         function controlLotMin() {
-            const minS = document.getElementById('slider-min-lot');
-            const maxS = document.getElementById('slider-max-lot');
+            const minS = document.getElementById('slider-min-lot'); const maxS = document.getElementById('slider-max-lot');
             if (parseInt(minS.value) > parseInt(maxS.value) - 500) minS.value = parseInt(maxS.value) - 500;
-            displayLotText(minS.value, maxS.value);
-            updateTrack('lot-track', minS.value, maxS.value, minLotGlobal, maxLotGlobal);
-            filterData();
+            displayLotText(minS.value, maxS.value); updateTrack('lot-track', minS.value, maxS.value, minLotGlobal, maxLotGlobal); filterData();
         }
-
         function controlLotMax() {
-            const minS = document.getElementById('slider-min-lot');
-            const maxS = document.getElementById('slider-max-lot');
+            const minS = document.getElementById('slider-min-lot'); const maxS = document.getElementById('slider-max-lot');
             if (parseInt(maxS.value) < parseInt(minS.value) + 500) maxS.value = parseInt(minS.value) + 500;
-            displayLotText(minS.value, maxS.value);
-            updateTrack('lot-track', minS.value, maxS.value, minLotGlobal, maxLotGlobal);
-            filterData();
+            displayLotText(minS.value, maxS.value); updateTrack('lot-track', minS.value, maxS.value, minLotGlobal, maxLotGlobal); filterData();
         }
-
         function displayLotText(min, max) {
-            const maxText = parseInt(max) === maxLotGlobal ? '15,000+ sqft' : `${max} sqft`;
-            document.getElementById('lot-range-display').textContent = `${min} - ${maxText}`;
+            document.getElementById('lot-range-display').textContent = `${min} - ${parseInt(max) === maxLotGlobal ? '15,000+' : max} sqft`;
         }
-
         function updateTrack(id, currentMin, currentMax, globalMin, globalMax) {
             const pctMin = ((currentMin - globalMin) / (globalMax - globalMin)) * 100;
             const pctMax = ((currentMax - globalMin) / (globalMax - globalMin)) * 100;
@@ -302,13 +259,7 @@
         function initDashboard() {
             processFeatures();
             map = L.map('map', { center: [31.7645, -106.5010], zoom: 15 });
-
-            const standardBase = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: 'CARTO' }).addTo(map);
-            const topoBase = L.tileLayer('https://basemap.nationalmap.gov/arcgis/rest/services/USGSShadedReliefOnly/MapServer/tile/{z}/{y}/{x}', {
-                attribution: 'USGS', opacity: 0.75
-            });
-
-            L.control.layers({ "Planimetric Base": standardBase, "USGS Topo Shaded Relief": topoBase }, null, { position: 'topright' }).addTo(map);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: 'CARTO' }).addTo(map);
 
             const zonings = new Set();
             geojsonData.features.forEach(f => { if (f.properties.zoning) zonings.add(f.properties.zoning); });
@@ -329,54 +280,32 @@
             const addrVal = document.getElementById('filter-address').value.toLowerCase();
             const curbVal = document.getElementById('filter-curbcut').value;
             const zoneVal = document.getElementById('filter-zoning').value;
-            
-            const minYearSelected = parseInt(document.getElementById('slider-min-year').value);
-            const maxYearSelected = parseInt(document.getElementById('slider-max-year').value);
-            const minLotSelected = parseInt(document.getElementById('slider-min-lot').value);
-            const maxLotSelected = parseInt(document.getElementById('slider-max-lot').value);
+            const minYear = parseInt(document.getElementById('slider-min-year').value);
+            const maxYear = parseInt(document.getElementById('slider-max-year').value);
+            const minLot = parseInt(document.getElementById('slider-min-lot').value);
+            const maxLot = parseInt(document.getElementById('slider-max-lot').value);
 
             const filteredFeatures = geojsonData.features.filter(f => {
                 const p = f.properties;
-                const lotSqft = p.ll_gissqft || 0;
-
                 if (slopeVal && p.computed_slope !== slopeVal) return false;
                 if (addrVal && (!p.address || !p.address.toLowerCase().includes(addrVal))) return false;
                 if (curbVal && p.CurbCut !== curbVal) return false;
                 if (zoneVal && p.zoning !== zoneVal) return false;
-                if (p.yearbuilt && (p.yearbuilt < minYearSelected || p.yearbuilt > maxYearSelected)) return false;
-                if (lotSqft < minLotSelected) return false;
-                if (maxLotSelected !== maxLotGlobal && lotSqft > maxLotSelected) return false;
-
+                if (p.yearbuilt && (p.yearbuilt < minYear || p.yearbuilt > maxYear)) return false;
+                if (p.ll_gissqft && (p.ll_gissqft < minLot || (maxLot !== maxLotGlobal && p.ll_gissqft > maxLot))) return false;
                 return true;
             });
 
             if (geojsonLayer) map.removeLayer(geojsonLayer);
-
             geojsonLayer = L.geoJSON({ type: "FeatureCollection", features: filteredFeatures }, {
                 style: (f) => ({
                     fillColor: f.properties.OffStreet === 'Y' ? '#10b981' : '#ef4444',
                     weight: 1.2, opacity: 0.85, color: '#ffffff', fillOpacity: 0.65
                 }),
                 onEachFeature: (f, l) => {
-                    const p = f.properties;
-                    l.bindPopup(`
-                        <div class="font-sans text-xs p-1">
-                            <h4 class="font-bold border-b pb-1 mb-1 text-slate-900">${p.address || 'Parcel Boundary'}</h4>
-                            <table class="w-full text-left space-y-0.5">
-                                <tr><td class="font-semibold text-slate-400 pr-2">Zoning:</td><td>${p.zoning || 'N/A'}</td></tr>
-                                <tr><td class="font-semibold text-slate-400 pr-2">Lot Envelope:</td><td>${p.ll_gissqft ? p.ll_gissqft.toLocaleString() + ' sqft' : 'N/A'}</td></tr>
-                                <tr><td class="font-semibold text-slate-400 pr-2">Grade Delta:</td><td>${p.computed_slope}</td></tr>
-                                <tr><td class="font-semibold text-slate-400 pr-2">Year Built:</td><td>${p.yearbuilt || 'N/A'}</td></tr>
-                                <tr><td class="font-semibold text-slate-400 pr-2">Parking:</td><td class="font-bold text-indigo-700">${p.OffStreet === 'Y' ? 'Yes' : 'No'} (${p.Type || 'None'})</td></tr>
-                            </table>
-                        </div>
-                    `);
+                    l.bindPopup(`<div class="font-sans text-xs p-1"><b>${f.properties.address}</b><br/>Zoning: ${f.properties.zoning}<br/>Built: ${f.properties.yearbuilt}</div>`);
                 }
             }).addTo(map);
-
-            if (filteredFeatures.length > 0 && map.getBounds().isValid()) {
-                map.fitBounds(geojsonLayer.getBounds(), { padding: [15, 15] });
-            }
 
             const total = filteredFeatures.length;
             const yesCount = filteredFeatures.filter(f => f.properties.OffStreet === 'Y').length;
@@ -384,8 +313,8 @@
 
             document.getElementById('parking-pct').textContent = pct + '%';
             document.getElementById('parking-progress').style.width = pct + '%';
-            document.getElementById('raw-counts').textContent = `Isolating ${yesCount} parcels with parking out of ${total} matched sets`;
-            document.getElementById('metric-summary').textContent = `Scope: ${total} Active Parcels | ${pct}% Parking Yield`;
+            document.getElementById('raw-counts').textContent = `Isolating ${yesCount} lots out of ${total}`;
+            document.getElementById('metric-summary').textContent = `Scope: ${total} Parcels | ${pct}% Parking`;
 
             renderAnalyticsVisuals(filteredFeatures);
         }
@@ -394,42 +323,19 @@
             const slopeMap = { 'Escarpment': { total: 0, yes: 0 }, 'Incline': { total: 0, yes: 0 }, 'Plateau': { total: 0, yes: 0 } };
             features.forEach(f => {
                 const s = f.properties.computed_slope;
-                if(slopeMap[s]) {
-                    slopeMap[s].total++;
-                    if (f.properties.OffStreet === 'Y') slopeMap[s].yes++;
-                }
+                if(slopeMap[s]) { slopeMap[s].total++; if (f.properties.OffStreet === 'Y') slopeMap[s].yes++; }
             });
             const slopePcts = Object.keys(slopeMap).map(k => slopeMap[k].total > 0 ? Math.round((slopeMap[k].yes / slopeMap[k].total) * 100) : 0);
-
             drawCanvasChart('chart-slope', 'bar', {
                 labels: ['Severe Escarpment', 'Moderate Incline', 'Flat Plateau'],
-                datasets: [{ label: '% Parcels with Off-Street Parking', data: slopePcts, backgroundColor: '#4f46e5', borderRadius: 4 }]
-            }, { maxScale: 100 });
-
-            const timelineMap = {};
-            features.forEach(f => {
-                if (!f.properties.yearbuilt) return;
-                const dec = Math.floor(f.properties.yearbuilt / 10) * 10 + 's';
-                if (!timelineMap[dec]) timelineMap[dec] = { total: 0, yes: 0 };
-                timelineMap[dec].total++;
-                if (f.properties.OffStreet === 'Y') timelineMap[dec].yes++;
-            });
-            const sortedDecades = Object.keys(timelineMap).sort();
-            const timelinePcts = sortedDecades.map(d => Math.round((timelineMap[d].yes / timelineMap[d].total) * 100));
-
-            drawCanvasChart('chart-timeline', 'line', {
-                labels: sortedDecades,
-                datasets: [{ label: 'Adaptation Yield %', data: timelinePcts, borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,0.05)', fill: true, tension: 0.25 }]
+                datasets: [{ label: '% Off-Street Parking', data: slopePcts, backgroundColor: '#4f46e5', borderRadius: 4 }]
             }, { maxScale: 100 });
 
             const typeMap = { 'Surface Lot': 0, 'Garage Asset': 0, 'No Dedicated Asset': 0 };
             features.forEach(f => {
                 const t = f.properties.Type;
-                if (t === 'Surface') typeMap['Surface Lot']++;
-                else if (t === 'Garage') typeMap['Garage Asset']++;
-                else typeMap['No Dedicated Asset']++;
+                if (t === 'Surface') typeMap['Surface Lot']++; else if (t === 'Garage') typeMap['Garage Asset']++; else typeMap['No Dedicated Asset']++;
             });
-
             drawCanvasChart('chart-typology', 'doughnut', {
                 labels: Object.keys(typeMap),
                 datasets: [{ data: Object.values(typeMap), backgroundColor: ['#6366f1', '#f59e0b', '#ef4444'], borderWidth: 1 }]
@@ -440,36 +346,24 @@
             if (charts[id]) { charts[id].data = data; charts[id].update(); return; }
             const ctx = document.getElementById(id).getContext('2d');
             charts[id] = new Chart(ctx, {
-                type: type,
-                data: data,
+                type: type, data: data,
                 options: {
                     responsive: true, maintainAspectRatio: false,
                     plugins: { legend: { display: !options.isDoughnut, position: 'top', labels: { boxWidth: 10, font: { size: 9 } } } },
                     scales: options.isDoughnut ? {} : {
-                        y: { min: 0, max: options.maxScale, ticks: { font: { size: 9 }, callback: v => v + '%' }, grid: { color: '#f1f5f9' } },
-                        x: { grid: { display: false }, ticks: { font: { size: 9 } } }
+                        y: { min: 0, max: options.maxScale, ticks: { font: { size: 9 }, callback: v => v + '%' } }
                     }
                 }
             });
         }
 
         function resetFilters() {
-            document.getElementById('filter-slope').value = '';
-            document.getElementById('filter-address').value = '';
-            document.getElementById('filter-curbcut').value = '';
-            document.getElementById('filter-zoning').value = '';
-            
-            document.getElementById('slider-min-year').value = minYearGlobal;
-            document.getElementById('slider-max-year').value = maxYearGlobal;
-            document.getElementById('year-range-display').textContent = `${minYearGlobal} - ${maxYearGlobal}`;
-            
-            document.getElementById('slider-min-lot').value = minLotGlobal;
-            document.getElementById('slider-max-lot').value = maxLotGlobal;
-            displayLotText(minLotGlobal, maxLotGlobal);
-            
+            document.getElementById('filter-slope').value = ''; document.getElementById('filter-address').value = '';
+            document.getElementById('filter-curbcut').value = ''; document.getElementById('filter-zoning').value = '';
+            document.getElementById('slider-min-year').value = minYearGlobal; document.getElementById('slider-max-year').value = maxYearGlobal;
+            document.getElementById('slider-min-lot').value = minLotGlobal; document.getElementById('slider-max-lot').value = maxLotGlobal;
             updateTrack('year-track', minYearGlobal, maxYearGlobal, minYearGlobal, maxYearGlobal);
-            updateTrack('lot-track', minLotGlobal, maxLotGlobal, minLotGlobal, maxLotGlobal);
-            updateVisualization();
+            updateTrack('lot-track', minLotGlobal, maxLotGlobal, minLotGlobal, maxLotGlobal); updateVisualization();
         }
 
         window.onload = initDashboard;
