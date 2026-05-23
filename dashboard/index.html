@@ -16,7 +16,7 @@
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
         // Fetch Data
-        fetch('sunsetparking.geojson')
+        fetch('sunsetparking.GEOjson')
             .then(response => response.json())
             .then(data => {
                 // FIXED DATA LOOP
