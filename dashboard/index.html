@@ -11,57 +11,82 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <style>
-        body { margin: 0; padding: 0; display: flex; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; height: 100vh; }
-        #sidebar { width: 450px; background: #f4f6f8; padding: 20px; overflow-y: auto; box-shadow: 2px 0 5px rgba(0,0,0,0.1); z-index: 1000; }
-        #map { flex-grow: 1; height: 100%; }
-        .filter-group { margin-bottom: 15px; }
-        select { width: 100%; padding: 8px; margin-top: 5px; border-radius: 4px; border: 1px solid #ccc; }
-        .chart-container { position: relative; margin-top: 20px; width: 100%; height: 250px; }
-        h2 { font-size: 1.4em; color: #2c3e50; border-bottom: 2px solid #3498db; padding-bottom: 5px; }
-        h3 { font-size: 1.1em; color: #34495e; margin-top: 25px; }
-        .popup-content { font-family: Arial, sans-serif; max-height: 250px; overflow-y: auto; }
+        body { margin: 0; padding: 0; display: flex; flex-direction: column; height: 100vh; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        
+        /* Top Section: Sidebar + Map */
+        #top-section { display: flex; flex: 1; overflow: hidden; }
+        
+        #sidebar { width: 350px; background: #2c3e50; color: #ecf0f1; padding: 20px; overflow-y: auto; box-shadow: 2px 0 5px rgba(0,0,0,0.2); z-index: 1000; }
+        #sidebar h2 { margin-top: 0; border-bottom: 2px solid #3498db; padding-bottom: 10px; }
+        #sidebar p { font-size: 0.9em; color: #bdc3c7; margin-bottom: 25px;}
+        
+        #map-container { flex: 1; position: relative; }
+        #map { height: 100%; width: 100%; background: #f4f6f8; }
+
+        /* Bottom Section: Charts */
+        #bottom-section { height: 280px; display: flex; background: #ecf0f1; border-top: 3px solid #bdc3c7; padding: 15px; gap: 15px; }
+        .chart-wrapper { flex: 1; background: white; border-radius: 8px; padding: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative; }
+        .chart-wrapper h3 { margin: 0 0 10px 0; font-size: 1em; color: #34495e; text-align: center; }
+        .canvas-container { position: relative; height: calc(100% - 30px); width: 100%; }
+
+        /* Button Group Filters */
+        .filter-category { margin-bottom: 25px; }
+        .filter-category h3 { font-size: 1.05em; color: #ecf0f1; margin: 0 0 10px 0; border-bottom: 1px solid #7f8c8d; padding-bottom: 5px; }
+        .button-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .filter-btn { background: #34495e; color: #bdc3c7; border: 1px solid #7f8c8d; padding: 6px 12px; border-radius: 20px; cursor: pointer; font-size: 0.85em; transition: 0.2s; }
+        .filter-btn:hover { background: #3498db; color: white; border-color: #3498db; }
+        .filter-btn.active { background: #2ecc71; color: white; border-color: #27ae60; font-weight: bold; box-shadow: 0 0 8px rgba(46, 204, 113, 0.4); }
+
+        /* Map Popups */
+        .popup-content { font-family: Arial, sans-serif; max-height: 200px; overflow-y: auto; color: #333; }
     </style>
 </head>
 <body>
 
-    <div id="sidebar">
-        <h2>Sunset Heights Parking</h2>
-        <p>Interactive dashboard visualizing off-street parking prevalence.</p>
+    <div id="top-section">
+        <div id="sidebar">
+            <h2>Sunset Heights</h2>
+            <p>Interactive dashboard visualizing off-street parking prevalence. Use the buttons below to filter the map and charts simultaneously.</p>
 
-        <div class="filter-group">
-            <label for="zoningFilter"><strong>Zoning</strong></label>
-            <select id="zoningFilter" onchange="applyFilters()">
-                <option value="all">All Zoning Types</option>
-            </select>
-        </div>
-        
-        <div class="filter-group">
-            <label for="useFilter"><strong>Building Use (LBCS)</strong></label>
-            <select id="useFilter" onchange="applyFilters()">
-                <option value="all">All Building Uses</option>
-            </select>
-        </div>
+            <div class="filter-category">
+                <h3>Zoning</h3>
+                <div id="btn-group-zoning" class="button-group"></div>
+            </div>
+            
+            <div class="filter-category">
+                <h3>Building Use</h3>
+                <div id="btn-group-use" class="button-group"></div>
+            </div>
 
-        <div class="filter-group">
-            <label for="offStreetFilter"><strong>Off-Street Parking</strong></label>
-            <select id="offStreetFilter" onchange="applyFilters()">
-                <option value="all">All Properties</option>
-                <option value="Yes">Has Off-Street Parking</option>
-                <option value="No">No Off-Street Parking</option>
-            </select>
+            <div class="filter-category">
+                <h3>Off-Street Parking</h3>
+                <div id="btn-group-parking" class="button-group">
+                    <button class="filter-btn active" onclick="updateFilter('offStreet', 'all', this)">All</button>
+                    <button class="filter-btn" onclick="updateFilter('offStreet', 'Yes', this)">Yes</button>
+                    <button class="filter-btn" onclick="updateFilter('offStreet', 'No', this)">No</button>
+                </div>
+            </div>
         </div>
 
-        <h3>Parking Prevalence by Zoning (%)</h3>
-        <div class="chart-container"><canvas id="zoningChart"></canvas></div>
-
-        <h3>Parking Prevalence by Decade Built (%)</h3>
-        <div class="chart-container"><canvas id="decadeChart"></canvas></div>
-        
-        <h3>Parking Prevalence by Building Use (%)</h3>
-        <div class="chart-container"><canvas id="useChart"></canvas></div>
+        <div id="map-container">
+            <div id="map"></div>
+        </div>
     </div>
 
-    <div id="map"></div>
+    <div id="bottom-section">
+        <div class="chart-wrapper">
+            <h3>Parking by Zoning (%)</h3>
+            <div class="canvas-container"><canvas id="zoningChart"></canvas></div>
+        </div>
+        <div class="chart-wrapper">
+            <h3>Parking by Decade Built (%)</h3>
+            <div class="canvas-container"><canvas id="decadeChart"></canvas></div>
+        </div>
+        <div class="chart-wrapper">
+            <h3>Parking by Building Use (%)</h3>
+            <div class="canvas-container"><canvas id="useChart"></canvas></div>
+        </div>
+    </div>
 
     <script>
         const map = L.map('map').setView([31.7619, -106.4850], 15);
@@ -70,6 +95,9 @@
         let geojsonLayer;
         let masterData = []; 
         let charts = {}; 
+        
+        // State object to track active buttons
+        let currentFilters = { zoning: 'all', use: 'all', offStreet: 'all' };
 
         function getDecade(year) {
             if (!year) return "Unknown";
@@ -78,23 +106,25 @@
             return Math.floor(y / 10) * 10 + "s";
         }
 
-        // Fetch Data safely
-        fetch('sunsetparking.GEOjson')
+        // FETCH FIX: Enforcing strict lowercase .geojson 
+        fetch('sunsetparking.geojson')
             .then(response => {
-                if (!response.ok) throw new Error("File not found");
+                if (!response.ok) throw new Error("File not found on server.");
                 return response.json();
             })
             .then(data => {
                 let rawFeatures = data.features ? data.features : (Array.isArray(data) ? data : []);
                 masterData = rawFeatures.filter(f => f && f.properties);
                 
-                populateDropdowns(masterData);
-                renderMap(masterData);
-                renderCharts(masterData);
+                buildDynamicButtons(masterData);
+                applyFilters(); // Renders map and charts based on initial 'all' state
             })
-            .catch(error => console.error("Error loading data. Ensure local server is running:", error));
+            .catch(error => {
+                console.error("Fetch Error:", error);
+                document.getElementById('map').innerHTML = `<div style="padding:20px; color:red;"><b>Error loading data:</b> Ensure your file on GitHub is named exactly <i>sunsetparking.geojson</i> (all lowercase).</div>`;
+            });
 
-        function populateDropdowns(features) {
+        function buildDynamicButtons(features) {
             const zonings = new Set();
             const uses = new Set();
 
@@ -103,11 +133,51 @@
                 if (f.properties.lbcs_structure_desc) uses.add(f.properties.lbcs_structure_desc);
             });
 
-            const zoningSelect = document.getElementById('zoningFilter');
-            [...zonings].sort().forEach(z => zoningSelect.add(new Option(z, z)));
+            createButtonGroup('btn-group-zoning', 'zoning', [...zonings].sort());
+            createButtonGroup('btn-group-use', 'use', [...uses].sort());
+        }
 
-            const useSelect = document.getElementById('useFilter');
-            [...uses].sort().forEach(u => useSelect.add(new Option(u, u)));
+        function createButtonGroup(containerId, filterKey, values) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = ''; 
+
+            const allBtn = document.createElement('button');
+            allBtn.className = 'filter-btn active';
+            allBtn.innerText = 'All';
+            allBtn.onclick = function() { updateFilter(filterKey, 'all', this); };
+            container.appendChild(allBtn);
+
+            values.forEach(val => {
+                const btn = document.createElement('button');
+                btn.className = 'filter-btn';
+                btn.innerText = val;
+                btn.onclick = function() { updateFilter(filterKey, val, this); };
+                container.appendChild(btn);
+            });
+        }
+
+        function updateFilter(filterKey, value, clickedBtn) {
+            currentFilters[filterKey] = value;
+            
+            // Manage active styling
+            const container = clickedBtn.parentElement;
+            const buttons = container.getElementsByClassName('filter-btn');
+            for(let btn of buttons) { btn.classList.remove('active'); }
+            clickedBtn.classList.add('active');
+
+            applyFilters();
+        }
+
+        function applyFilters() {
+            const filtered = masterData.filter(f => {
+                const p = f.properties;
+                return (currentFilters.zoning === "all" || p.zoning === currentFilters.zoning) &&
+                       (currentFilters.use === "all" || p.lbcs_structure_desc === currentFilters.use) &&
+                       (currentFilters.offStreet === "all" || p.OffStreet === currentFilters.offStreet);
+            });
+
+            renderMap(filtered);
+            renderCharts(filtered);
         }
 
         function renderMap(features) {
@@ -122,7 +192,6 @@
                     };
                 },
                 onEachFeature: function (feature, layer) {
-                    // DYNAMIC POPUP: Reads every column in your data automatically
                     let popupContent = `<div class="popup-content"><strong>${feature.properties.address || 'Property Data'}</strong><hr style="margin: 5px 0;">`;
                     for (const [key, value] of Object.entries(feature.properties)) {
                         if (value !== null && value !== "") {
@@ -140,7 +209,7 @@
         function renderCharts(features) {
             updateChart('zoningChart', features, f => f.properties.zoning || "Unzoned");
             updateChart('decadeChart', features, f => getDecade(f.properties.yearbuilt));
-            updateChart('useChart', features, f => f.properties.lbcs_structure_desc || "Unknown Use");
+            updateChart('useChart', features, f => f.properties.lbcs_structure_desc || "Unknown");
         }
 
         function updateChart(canvasId, features, categoryFn) {
@@ -163,26 +232,15 @@
                 type: 'bar',
                 data: {
                     labels: labels,
-                    datasets: [{ label: '% with Off-Street Parking', data: percentages, backgroundColor: '#3498db' }]
+                    datasets: [{ label: '% with Off-Street Parking', data: percentages, backgroundColor: '#3498db', borderRadius: 4 }]
                 },
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, max: 100 } }, plugins: { legend: { display: false } } }
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false, 
+                    scales: { y: { beginAtZero: true, max: 100, title: { display: true, text: 'Percentage (%)' } } }, 
+                    plugins: { legend: { display: false } } 
+                }
             });
-        }
-
-        function applyFilters() {
-            const zFilter = document.getElementById('zoningFilter').value;
-            const uFilter = document.getElementById('useFilter').value;
-            const oFilter = document.getElementById('offStreetFilter').value;
-
-            const filtered = masterData.filter(f => {
-                const p = f.properties;
-                return (zFilter === "all" || p.zoning === zFilter) &&
-                       (uFilter === "all" || p.lbcs_structure_desc === uFilter) &&
-                       (oFilter === "all" || p.OffStreet === oFilter);
-            });
-
-            renderMap(filtered);
-            renderCharts(filtered);
         }
     </script>
 </body>
