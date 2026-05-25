@@ -9,79 +9,87 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background-color: #0f172a; font-family: sans-serif; }
+        /* Applied TW Cen MT globally */
+        body { margin: 0; display: flex; flex-direction: column; height: 100vh; overflow: hidden; background-color: #0f172a; font-family: 'Tw Cen MT', 'Century Gothic', sans-serif; }
         
-        /* Compact Header */
-        #header { padding: 10px 15px; color: white; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; height: 50px; }
+        #header { padding: 8px 15px; color: white; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; height: 50px; }
         
-        /* Layout Structure */
         #app-container { display: flex; flex-grow: 1; height: calc(100vh - 50px); overflow: hidden; }
-        #sidebar { width: 310px; background: #f8fafc; padding: 15px; overflow-y: auto; border-right: 1px solid #e2e8f0; z-index: 1000; display: flex; flex-direction: column; gap: 12px; }
+        #sidebar { width: 320px; background: #f8fafc; padding: 12px; overflow-y: auto; border-right: 1px solid #e2e8f0; z-index: 1000; display: flex; flex-direction: column; gap: 10px; }
         #main-view { display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; }
-        #map { flex-grow: 1; min-height: 200px; }
+        #map { flex-grow: 1; min-height: 200px; z-index: 1;}
         
-        /* Compact Charts Panel */
         #charts-panel { height: 230px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; padding: 10px; gap: 10px; }
         .chart-box { flex: 1; background: white; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; align-items: center; }
         .chart-wrapper { position: relative; height: 100%; width: 100%; min-height: 0; }
         
-        /* Utility */
-        .filter-group { margin-bottom: 0.5rem; }
-        .decade-btn { transition: all 0.2s; cursor: pointer; text-align: center; font-size: 0.65rem; font-weight: bold; padding: 4px; border-radius: 4px; }
+        .filter-group { margin-bottom: 0.2rem; }
+        .decade-btn { transition: all 0.2s; cursor: pointer; text-align: center; font-size: 0.7rem; font-weight: bold; padding: 4px; border-radius: 4px; }
         .decade-btn.active { background-color: #2563eb; color: white; border-color: #1d4ed8; }
         .decade-btn.inactive { background-color: #e2e8f0; color: #475569; border-color: #cbd5e1; }
+        
+        /* Typography overrides for TW Cent Bold feel */
+        h1, h2, h3, .font-bold { font-weight: 700; }
     </style>
 </head>
 <body>
 
 <div id="header">
     <div>
-        <h1 class="text-base font-bold text-slate-100">Sunset Heights Feasibility Hub</h1>
-        <p class="text-[10px] text-slate-400">Evaluating Grading Challenges & Lot Forms • El Paso, TX</p>
+        <h1 class="text-lg font-bold text-slate-100 uppercase tracking-wide">Sunset Heights Feasibility Hub</h1>
+        <p class="text-[11px] text-slate-400">Evaluating Grading Challenges & Lot Forms • El Paso, TX</p>
     </div>
-    <div id="scope-badge" class="bg-indigo-900 text-indigo-100 text-xs py-1 px-3 rounded border border-indigo-700">Scope: Loading...</div>
+    <div id="scope-badge" class="bg-indigo-900 text-indigo-100 text-xs font-bold py-1 px-3 rounded border border-indigo-700">Scope: Loading...</div>
 </div>
 
 <div id="app-container">
     <div id="sidebar">
         <div class="bg-[#1e1b4b] p-3 rounded shadow text-white border border-[#312e81]">
-            <p class="text-[10px] font-bold tracking-wider text-indigo-300 mb-1 uppercase">Off-Street Capacity Rate</p>
+            <p class="text-[11px] font-bold tracking-wider text-indigo-300 mb-1 uppercase">Percentage of Lots with Off-Street Parking</p>
             <div class="flex items-baseline gap-2 mb-1">
-                <span id="parking-rate" class="text-3xl font-extrabold text-white">0%</span>
+                <span id="parking-rate" class="text-4xl font-bold text-white">0%</span>
             </div>
             <div class="w-full bg-slate-700 h-1.5 rounded-full mb-1"><div id="yield-bar" class="bg-emerald-400 h-1.5 rounded-full" style="width: 0%"></div></div>
-            <p id="yield-text" class="text-[10px] text-indigo-200">Isolating 0 lots out of 0</p>
+            <p id="yield-text" class="text-[11px] text-indigo-200">Isolating 0 lots out of 0</p>
+        </div>
+
+        <div class="filter-group bg-slate-200 p-2 rounded border border-slate-300 mt-1">
+            <label class="block text-[11px] font-bold text-gray-800 mb-1 uppercase">Map Display Mode</label>
+            <select id="map-color-mode" class="w-full p-1 border border-gray-300 rounded text-xs font-bold" onchange="applyFilters()">
+                <option value="parking">Color by Off-Street Parking Status</option>
+                <option value="elevation">Color by Parcel Elevation Delta</option>
+            </select>
         </div>
         
-        <div class="flex justify-between items-center border-b border-gray-200 pb-1">
-            <h2 class="text-xs font-bold uppercase tracking-wide">Variable Modifiers</h2>
-            <button onclick="resetFilters()" class="text-[10px] text-blue-600 font-semibold hover:underline">Reset All</button>
+        <div class="flex justify-between items-center border-b border-gray-300 pb-1 mt-1">
+            <h2 class="text-[11px] font-bold uppercase tracking-wide text-gray-800">Variable Modifiers</h2>
+            <button onclick="resetFilters()" class="text-[11px] text-blue-600 font-bold hover:underline">Reset All Filters</button>
         </div>
 
         <div class="filter-group">
-            <label class="block text-[10px] font-semibold text-gray-600 mb-1">ERA OF CONSTRUCTION</label>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1 uppercase">Era of Construction</label>
             <div id="decade-grid" class="grid grid-cols-4 gap-1">
                 </div>
         </div>
 
         <div class="filter-group">
-            <label class="block text-[10px] font-semibold text-gray-600 mb-1">ELEVATION DELTA (SLOPE)</label>
+            <label class="block text-[11px] font-bold text-gray-600 mb-1 uppercase">Elevation Delta (Slope)</label>
             <select id="filter-delta" class="w-full p-1 border border-gray-300 rounded text-xs" onchange="applyFilters()">
                 <option value="">All Elevations</option>
-                <option value="0-5">0 - 5 ft (Relatively Flat)</option>
-                <option value="5-15">5 - 15 ft (Moderate Grade)</option>
-                <option value="15-25">15 - 25 ft (Steep Grade)</option>
-                <option value="25-999">25+ ft (Extreme Grade)</option>
+                <option value="0-3">0 - 3 ft (Flat / Minimal)</option>
+                <option value="3-6">3 - 6 ft (Moderate Grade)</option>
+                <option value="6-10">6 - 10 ft (Steep Grade)</option>
+                <option value="10-999">10+ ft (Extreme Grade)</option>
             </select>
         </div>
 
         <div class="flex gap-2 filter-group">
             <div class="w-1/2">
-                <label class="block text-[10px] font-semibold text-gray-600 mb-1">CURB CUT</label>
+                <label class="block text-[11px] font-bold text-gray-600 mb-1 uppercase">Curb Cut</label>
                 <select id="filter-curbcut" class="w-full p-1 border border-gray-300 rounded text-xs" onchange="applyFilters()"><option value="">All</option></select>
             </div>
             <div class="w-1/2">
-                <label class="block text-[10px] font-semibold text-gray-600 mb-1">ZONING</label>
+                <label class="block text-[11px] font-bold text-gray-600 mb-1 uppercase">Zoning</label>
                 <select id="filter-zoning" class="w-full p-1 border border-gray-300 rounded text-xs" onchange="applyFilters()"><option value="">All</option></select>
             </div>
         </div>
@@ -91,15 +99,15 @@
         <div id="map"></div>
         <div id="charts-panel">
             <div class="chart-box">
-                <h3 class="text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1">Parcel Share by Elevation Delta</h3>
+                <h3 class="text-[11px] font-bold text-gray-800 uppercase tracking-wider mb-1">Parcel Share by Elevation Delta</h3>
                 <div class="chart-wrapper"><canvas id="chart-slope"></canvas></div>
             </div>
             <div class="chart-box">
-                <h3 class="text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1">Historical Build Eras (% of Selection)</h3>
+                <h3 class="text-[11px] font-bold text-gray-800 uppercase tracking-wider mb-1">Historical Build Eras</h3>
                 <div class="chart-wrapper"><canvas id="chart-timeline"></canvas></div>
             </div>
             <div class="chart-box">
-                <h3 class="text-[10px] font-bold text-gray-600 uppercase tracking-wider mb-1">Parking Typology Distribution</h3>
+                <h3 class="text-[11px] font-bold text-gray-800 uppercase tracking-wider mb-1">Parking Typology Distribution</h3>
                 <div class="chart-wrapper"><canvas id="chart-typologies"></canvas></div>
             </div>
         </div>
@@ -120,35 +128,17 @@
 
     let map, geojsonData, geojsonLayer;
     let charts = { slope: null, timeline: null, typologies: null };
-    let activeDecades = new Set(); // If empty, all are selected
+    let activeDecades = new Set();
+    let chartFilterTypology = null; 
+    let legendControl = null;
 
     async function initDashboard() {
-        // Aesthetic Base Map
         const baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB' });
         
-        // Detailed Topographic / Contour Map (Esri World Topo)
-        const topoLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { 
-            attribution: '© Esri', 
-            opacity: 0.8 
-        });
-
         map = L.map('map', { center: [31.7635, -106.495], zoom: 16, layers: [baseLayer] });
-        L.control.layers({"Clean Map": baseLayer}, {"Topographic Contours": topoLayer}).addTo(map);
-
-        // Add Map Legend
-        const legend = L.control({ position: 'bottomright' });
-        legend.onAdd = function () {
-            const div = L.DomUtil.create('div', 'bg-white p-2 border border-gray-300 rounded shadow text-xs');
-            div.innerHTML = `
-                <div class="font-bold mb-1 border-b pb-1">Off-Street Parking</div>
-                <div class="flex items-center"><span class="inline-block w-3 h-3 bg-[#10b981] opacity-70 border border-[#10b981] mr-2"></span> Present</div>
-                <div class="flex items-center mt-1"><span class="inline-block w-3 h-3 bg-[#ef4444] opacity-70 border border-[#ef4444] mr-2"></span> None</div>
-            `;
-            return div;
-        };
-        legend.addTo(map);
 
         generateDecadeButtons();
+        updateLegend(); // Initialize Legend
 
         try {
             const response = await fetch('./sunsetparking.GEOjson'); 
@@ -170,7 +160,8 @@
             let btn = document.createElement('div');
             btn.className = 'decade-btn inactive border';
             btn.textContent = year + 's';
-            btn.onclick = () => toggleDecade(btn, year);
+            btn.dataset.year = year;
+            btn.onclick = () => { toggleDecade(btn, year); applyFilters(); };
             container.appendChild(btn);
         }
     }
@@ -185,7 +176,40 @@
             btn.classList.remove('inactive');
             btn.classList.add('active');
         }
-        applyFilters();
+    }
+
+    function getElevationColor(d) {
+        return d >= 10 ? '#991b1b' : // Dark Red
+               d >= 6  ? '#ef4444' : // Red
+               d >= 3  ? '#fb923c' : // Orange
+                         '#fde047';  // Yellow
+    }
+
+    function updateLegend() {
+        if (legendControl) map.removeControl(legendControl);
+        const mode = document.getElementById('map-color-mode') ? document.getElementById('map-color-mode').value : 'parking';
+        
+        legendControl = L.control({ position: 'bottomright' });
+        legendControl.onAdd = function () {
+            const div = L.DomUtil.create('div', 'bg-white p-2 border border-gray-300 rounded shadow text-xs font-bold');
+            if (mode === 'parking') {
+                div.innerHTML = `
+                    <div class="mb-1 border-b pb-1">Off-Street Parking</div>
+                    <div class="flex items-center"><span class="inline-block w-3 h-3 bg-[#10b981] opacity-80 border border-gray-400 mr-2"></span> Present</div>
+                    <div class="flex items-center mt-1"><span class="inline-block w-3 h-3 bg-[#ef4444] opacity-80 border border-gray-400 mr-2"></span> None</div>
+                `;
+            } else {
+                div.innerHTML = `
+                    <div class="mb-1 border-b pb-1">Elevation Delta (Slope)</div>
+                    <div class="flex items-center"><span class="inline-block w-3 h-3 bg-[#fde047] opacity-80 border border-gray-400 mr-2"></span> 0 - 3 ft</div>
+                    <div class="flex items-center mt-1"><span class="inline-block w-3 h-3 bg-[#fb923c] opacity-80 border border-gray-400 mr-2"></span> 3 - 6 ft</div>
+                    <div class="flex items-center mt-1"><span class="inline-block w-3 h-3 bg-[#ef4444] opacity-80 border border-gray-400 mr-2"></span> 6 - 10 ft</div>
+                    <div class="flex items-center mt-1"><span class="inline-block w-3 h-3 bg-[#991b1b] opacity-80 border border-gray-400 mr-2"></span> 10+ ft</div>
+                `;
+            }
+            return div;
+        };
+        legendControl.addTo(map);
     }
 
     function applyFilters() {
@@ -198,9 +222,10 @@
         const filteredFeatures = geojsonData.features.filter(f => {
             const p = f.properties;
             
-            // 1. Zoning & Curbcut
+            // 1. Dropdowns & Clicked Typology
             if (zoningFilter && p[PROPERTY_KEYS.zoning] !== zoningFilter) return false;
             if (curbcutFilter && p[PROPERTY_KEYS.curbCut] !== curbcutFilter) return false;
+            if (chartFilterTypology && p[PROPERTY_KEYS.typology] !== chartFilterTypology) return false;
 
             // 2. Decade filter
             if (activeDecades.size > 0) {
@@ -210,21 +235,22 @@
                 if (!activeDecades.has(decade)) return false;
             }
 
-            // 3. Elevation Delta filter
+            // 3. Elevation Delta filter (Updated tighter classes)
             if (deltaFilter) {
                 const high = parseFloat(p[PROPERTY_KEYS.highElev]) || 0;
                 const low = parseFloat(p[PROPERTY_KEYS.lowElev]) || 0;
                 const diff = high - low;
                 
-                if (deltaFilter === "0-5" && diff > 5) return false;
-                if (deltaFilter === "5-15" && (diff <= 5 || diff > 15)) return false;
-                if (deltaFilter === "15-25" && (diff <= 15 || diff > 25)) return false;
-                if (deltaFilter === "25-999" && diff <= 25) return false;
+                if (deltaFilter === "0-3" && diff > 3) return false;
+                if (deltaFilter === "3-6" && (diff <= 3 || diff > 6)) return false;
+                if (deltaFilter === "6-10" && (diff <= 6 || diff > 10)) return false;
+                if (deltaFilter === "10-999" && diff <= 10) return false;
             }
 
             return true;
         });
 
+        updateLegend(); // Refresh legend in case mode changed
         renderMapData(filteredFeatures);
         updateKPIs(filteredFeatures);
         updateChartsData(filteredFeatures);
@@ -232,11 +258,22 @@
 
     function renderMapData(features) {
         if (geojsonLayer) { map.removeLayer(geojsonLayer); }
+        const mode = document.getElementById('map-color-mode').value;
         
         geojsonLayer = L.geoJSON(features, {
             style: f => {
-                const hasParking = f.properties[PROPERTY_KEYS.offStreet] === 'Yes' || f.properties[PROPERTY_KEYS.offStreet] === 'Y';
-                return { color: hasParking ? '#10b981' : '#ef4444', weight: 1, fillOpacity: 0.6 };
+                let fillColor = '#cccccc';
+                
+                if (mode === 'parking') {
+                    const hasParking = f.properties[PROPERTY_KEYS.offStreet] === 'Yes' || f.properties[PROPERTY_KEYS.offStreet] === 'Y';
+                    fillColor = hasParking ? '#10b981' : '#ef4444';
+                } else {
+                    const high = parseFloat(f.properties[PROPERTY_KEYS.highElev]) || 0;
+                    const low = parseFloat(f.properties[PROPERTY_KEYS.lowElev]) || 0;
+                    fillColor = getElevationColor(high - low);
+                }
+
+                return { color: fillColor, weight: 1, fillOpacity: 0.75, color: '#334155' };
             },
             onEachFeature: (f, l) => {
                 const high = parseFloat(f.properties[PROPERTY_KEYS.highElev]) || 0;
@@ -244,7 +281,7 @@
                 const elevationDiff = (high - low).toFixed(1);
 
                 l.bindPopup(`
-                    <div class="text-xs">
+                    <div class="text-xs font-sans">
                         <strong class="text-sm">${f.properties[PROPERTY_KEYS.address] || 'No Address'}</strong><br>
                         <hr class="my-1">
                         <b>Elevation Delta:</b> ${elevationDiff} ft<br>
@@ -290,49 +327,90 @@
     };
 
     function initCharts() {
-        Chart.defaults.font.size = 10;
+        Chart.defaults.font.family = "'Tw Cen MT', 'Century Gothic', sans-serif";
+        Chart.defaults.font.size = 11;
         
-        // Elevation Delta Chart - Horizontal Bar
+        // Elevation Delta Chart - Clickable
         charts.slope = new Chart(document.getElementById('chart-slope').getContext('2d'), {
             type: 'bar',
-            data: { labels: ['0-5 ft', '5-15 ft', '15-25 ft', '25+ ft'], datasets: [{ data: [], backgroundColor: '#6366f1' }] },
-            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: percentageTooltip }, scales: { x: { max: 100, ticks: { callback: v => v + '%' } } } }
+            data: { labels: ['0-3 ft', '3-6 ft', '6-10 ft', '10+ ft'], datasets: [{ data: [], backgroundColor: '#6366f1', hoverBackgroundColor: '#4f46e5' }] },
+            options: { 
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
+                plugins: { legend: { display: false }, tooltip: percentageTooltip }, 
+                scales: { 
+                    x: { max: 100, title: { display: true, text: '% of Filtered Parcels', font: {weight: 'bold'} }, ticks: { callback: v => v + '%' } }
+                },
+                onClick: (e, activeEls) => {
+                    if(activeEls.length > 0) {
+                        const mappings = ["0-3", "3-6", "6-10", "10-999"];
+                        document.getElementById('filter-delta').value = mappings[activeEls[0].index];
+                        applyFilters();
+                    }
+                }
+            }
         });
 
-        // Timeline Chart - Vertical Bar
+        // Timeline Chart - Clickable
         charts.timeline = new Chart(document.getElementById('chart-timeline').getContext('2d'), {
             type: 'bar',
-            data: { labels: [], datasets: [{ data: [], backgroundColor: '#10b981' }] },
-            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: percentageTooltip }, scales: { y: { max: 100, ticks: { callback: v => v + '%' } } } }
+            data: { labels: [], datasets: [{ data: [], backgroundColor: '#10b981', hoverBackgroundColor: '#059669' }] },
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { legend: { display: false }, tooltip: percentageTooltip }, 
+                scales: { 
+                    y: { max: 100, title: { display: true, text: '% of Filtered Parcels', font: {weight: 'bold'} }, ticks: { callback: v => v + '%' } }
+                },
+                onClick: (e, activeEls) => {
+                    if(activeEls.length > 0) {
+                        const decadeLabel = charts.timeline.data.labels[activeEls[0].index];
+                        const decade = parseInt(decadeLabel);
+                        const btn = Array.from(document.querySelectorAll('.decade-btn')).find(b => parseInt(b.dataset.year) === decade);
+                        if(btn) { toggleDecade(btn, decade); applyFilters(); }
+                    }
+                }
+            }
         });
 
-        // Typologies Chart - Horizontal Bar (Cleaner than Doughnut for %)
+        // Typologies Chart - Clickable
         charts.typologies = new Chart(document.getElementById('chart-typologies').getContext('2d'), {
             type: 'bar',
-            data: { labels: [], datasets: [{ data: [], backgroundColor: '#f59e0b' }] },
-            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: percentageTooltip }, scales: { x: { max: 100, ticks: { callback: v => v + '%' } } } }
+            data: { labels: [], datasets: [{ data: [], backgroundColor: '#f59e0b', hoverBackgroundColor: '#d97706' }] },
+            options: { 
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
+                plugins: { legend: { display: false }, tooltip: percentageTooltip }, 
+                scales: { 
+                    x: { max: 100, title: { display: true, text: '% of Filtered Parcels', font: {weight: 'bold'} }, ticks: { callback: v => v + '%' } }
+                },
+                onClick: (e, activeEls) => {
+                    if(activeEls.length > 0) {
+                        const clickedType = charts.typologies.data.labels[activeEls[0].index];
+                        chartFilterTypology = (chartFilterTypology === clickedType) ? null : clickedType; // Toggle off if clicked again
+                        applyFilters();
+                    }
+                }
+            }
         });
     }
 
     function updateChartsData(features) {
-        const total = features.length || 1; // Prevent division by zero
+        const total = features.length || 1; 
 
-        // 1. Elevation Delta Aggregation
+        // 1. Elevation Delta
         let slopeCounts = [0, 0, 0, 0];
         features.forEach(f => {
             const high = parseFloat(f.properties[PROPERTY_KEYS.highElev]) || 0;
             const low = parseFloat(f.properties[PROPERTY_KEYS.lowElev]) || 0;
             const diff = high - low;
-            if (diff <= 5) slopeCounts[0]++;
-            else if (diff <= 15) slopeCounts[1]++;
-            else if (diff <= 25) slopeCounts[2]++;
+            if (diff <= 3) slopeCounts[0]++;
+            else if (diff <= 6) slopeCounts[1]++;
+            else if (diff <= 10) slopeCounts[2]++;
             else slopeCounts[3]++;
         });
         charts.slope.countsArray = slopeCounts;
         charts.slope.data.datasets[0].data = slopeCounts.map(c => (c / total) * 100);
         charts.slope.update();
 
-        // 2. Timeline Aggregation
+        // 2. Timeline
         let decades = {};
         features.forEach(f => {
             let year = parseInt(f.properties[PROPERTY_KEYS.yearBuilt]);
@@ -349,7 +427,7 @@
         charts.timeline.data.datasets[0].data = timelineCounts.map(c => (c / total) * 100);
         charts.timeline.update();
 
-        // 3. Typologies Aggregation
+        // 3. Typologies
         let types = {};
         features.forEach(f => {
             let type = f.properties[PROPERTY_KEYS.typology];
@@ -357,7 +435,7 @@
                 types[type] = (types[type] || 0) + 1;
             }
         });
-        // Sort typologies by frequency
+        
         const sortedTypes = Object.keys(types).sort((a, b) => types[b] - types[a]);
         const typeCounts = sortedTypes.map(t => types[t]);
 
@@ -371,8 +449,11 @@
         document.getElementById('filter-zoning').value = '';
         document.getElementById('filter-curbcut').value = '';
         document.getElementById('filter-delta').value = '';
+        document.getElementById('map-color-mode').value = 'parking';
         
+        chartFilterTypology = null;
         activeDecades.clear();
+        
         document.querySelectorAll('.decade-btn').forEach(btn => {
             btn.classList.remove('active');
             btn.classList.add('inactive');
