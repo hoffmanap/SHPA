@@ -360,4 +360,156 @@
         Chart.defaults.font.size = 11;
         
         // Slope Chart
-        charts.slope = new Chart(document.
+        charts.slope = new Chart(document.getElementById('chart-slope').getContext('2d'), {
+            type: 'bar',
+            data: { labels: ['0-3 ft', '3-6 ft', '6-10 ft', '10+ ft'], datasets: [{ data: [], backgroundColor: '#6366f1', hoverBackgroundColor: '#4f46e5' }] },
+            options: { 
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
+                plugins: { legend: { display: false }, tooltip: percentageTooltip }, 
+                scales: { 
+                    x: { max: 100, title: { display: true, text: '% of Filtered Parcels', font: {weight: 'bold'} }, ticks: { callback: v => v + '%' } }
+                },
+                onClick: (e, activeEls) => {
+                    if(activeEls.length > 0) {
+                        const mappings = ["0-3", "3-6", "6-10", "10-999"];
+                        document.getElementById('filter-delta').value = mappings[activeEls[0].index];
+                        applyFilters();
+                    }
+                }
+            }
+        });
+
+        // Timeline Chart (Now Stacked with Split Data)
+        charts.timeline = new Chart(document.getElementById('chart-timeline').getContext('2d'), {
+            type: 'bar',
+            data: { 
+                labels: [], 
+                datasets: [
+                    { label: 'With Parking', data: [], backgroundColor: '#10b981', hoverBackgroundColor: '#059669' },
+                    { label: 'No Parking', data: [], backgroundColor: '#ef4444', hoverBackgroundColor: '#dc2626' }
+                ] 
+            },
+            options: { 
+                responsive: true, maintainAspectRatio: false, 
+                plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 8, font: {size: 9} } }, tooltip: percentageTooltip }, 
+                scales: { 
+                    x: { stacked: true },
+                    y: { stacked: true, max: 100, title: { display: true, text: '% of Filtered Parcels', font: {weight: 'bold'} }, ticks: { callback: v => v + '%' } }
+                },
+                onClick: (e, activeEls) => {
+                    if(activeEls.length > 0) {
+                        const decadeLabel = charts.timeline.data.labels[activeEls[0].index];
+                        const decade = parseInt(decadeLabel);
+                        const btn = Array.from(document.querySelectorAll('.decade-btn')).find(b => parseInt(b.dataset.year) === decade);
+                        if(btn) { toggleDecade(btn, decade); applyFilters(); }
+                    }
+                }
+            }
+        });
+
+        // Typologies Chart
+        charts.typologies = new Chart(document.getElementById('chart-typologies').getContext('2d'), {
+            type: 'bar',
+            data: { labels: [], datasets: [{ data: [], backgroundColor: '#f59e0b', hoverBackgroundColor: '#d97706' }] },
+            options: { 
+                indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
+                plugins: { legend: { display: false }, tooltip: percentageTooltip }, 
+                scales: { 
+                    x: { max: 100, title: { display: true, text: '% of Filtered Parcels', font: {weight: 'bold'} }, ticks: { callback: v => v + '%' } }
+                },
+                onClick: (e, activeEls) => {
+                    if(activeEls.length > 0) {
+                        const clickedType = charts.typologies.data.labels[activeEls[0].index];
+                        chartFilterTypology = (chartFilterTypology === clickedType) ? null : clickedType; 
+                        applyFilters();
+                    }
+                }
+            }
+        });
+    }
+
+    function updateChartsData(features) {
+        const total = features.length || 1; 
+
+        // 1. Elevation Aggregation
+        let slopeCounts = [0, 0, 0, 0];
+        features.forEach(f => {
+            const high = parseFloat(f.properties[PROPERTY_KEYS.highElev]) || 0;
+            const low = parseFloat(f.properties[PROPERTY_KEYS.lowElev]) || 0;
+            const diff = high - low;
+            if (diff <= 3) slopeCounts[0]++;
+            else if (diff <= 6) slopeCounts[1]++;
+            else if (diff <= 10) slopeCounts[2]++;
+            else slopeCounts[3]++;
+        });
+        charts.slope.data.datasets[0].countsArray = slopeCounts;
+        charts.slope.data.datasets[0].data = slopeCounts.map(c => (c / total) * 100);
+        charts.slope.update();
+
+        // 2. Timeline Aggregation (Split by Parking)
+        let decades = {};
+        features.forEach(f => {
+            let year = parseInt(f.properties[PROPERTY_KEYS.yearBuilt]);
+            if (year && year >= 1900) {
+                let decade = Math.floor(year / 10) * 10;
+                if (!decades[decade]) decades[decade] = { with: 0, without: 0 };
+                
+                const offVal = f.properties[PROPERTY_KEYS.offStreet] ? f.properties[PROPERTY_KEYS.offStreet].toString().trim().toLowerCase() : '';
+                if (offVal === 'yes' || offVal === 'y' || offVal === 'true') {
+                    decades[decade].with++;
+                } else {
+                    decades[decade].without++;
+                }
+            }
+        });
+        const sortedDecades = Object.keys(decades).sort();
+        const withCounts = sortedDecades.map(d => decades[d].with);
+        const withoutCounts = sortedDecades.map(d => decades[d].without);
+        
+        charts.timeline.data.datasets[0].countsArray = withCounts;
+        charts.timeline.data.datasets[1].countsArray = withoutCounts;
+        
+        charts.timeline.data.labels = sortedDecades.map(d => d + 's');
+        charts.timeline.data.datasets[0].data = withCounts.map(c => (c / total) * 100);
+        charts.timeline.data.datasets[1].data = withoutCounts.map(c => (c / total) * 100);
+        charts.timeline.update();
+
+        // 3. Typologies Aggregation
+        let types = {};
+        features.forEach(f => {
+            let type = f.properties[PROPERTY_KEYS.typology];
+            if (type && type.trim() !== "") {
+                types[type] = (types[type] || 0) + 1;
+            }
+        });
+        
+        const sortedTypes = Object.keys(types).sort((a, b) => types[b] - types[a]);
+        const typeCounts = sortedTypes.map(t => types[t]);
+
+        charts.typologies.data.datasets[0].countsArray = typeCounts;
+        charts.typologies.data.labels = sortedTypes;
+        charts.typologies.data.datasets[0].data = typeCounts.map(c => (c / total) * 100);
+        charts.typologies.update();
+    }
+
+    function resetFilters() {
+        document.getElementById('filter-zoning').value = '';
+        document.getElementById('filter-curbcut').value = '';
+        document.getElementById('filter-delta').value = '';
+        document.getElementById('filter-use').value = '';
+        document.getElementById('map-color-mode').value = 'parking';
+        
+        chartFilterTypology = null;
+        activeDecades.clear();
+        
+        document.querySelectorAll('.decade-btn').forEach(btn => {
+            btn.classList.remove('active');
+            btn.classList.add('inactive');
+        });
+        
+        applyFilters();
+    }
+
+</script>
+</body>
+</html>
