@@ -42,7 +42,6 @@
 
 <div id="app-container">
     <div id="sidebar">
-        <!-- Yield Card -->
         <div class="bg-[#1e1b4b] p-3 rounded shadow text-white border border-[#312e81]">
             <p class="text-[11px] font-bold tracking-wider text-indigo-300 mb-1 uppercase">Percentage of Lots with Off-Street Parking</p>
             <div class="flex items-baseline gap-2 mb-1">
@@ -79,6 +78,11 @@
                 <option value="6-10">6 - 10 ft (Steep Grade)</option>
                 <option value="10-999">10+ ft (Extreme Grade)</option>
             </select>
+        </div>
+
+        <div class="filter-group mt-1">
+            <label class="block text-[11px] font-bold text-gray-600 mb-1 uppercase">Use Description</label>
+            <select id="filter-use" class="w-full p-1 border border-gray-300 rounded text-xs" onchange="applyFilters()"><option value="">All Uses</option></select>
         </div>
 
         <div class="flex gap-2 filter-group">
@@ -120,6 +124,7 @@
         address: "address",       
         typology: "Type",
         curbCut: "CurbCut",
+        useDesc: "lbcs_structure_desc",
         highElev: "highest_parcel_elevation", 
         lowElev: "lowest_parcel_elevation"    
     };
@@ -130,37 +135,31 @@
     let chartFilterTypology = null; 
     let legendControl = null;
 
-    // Use DOMContentLoaded to ensure HTML is fully parsed before running script
     document.addEventListener('DOMContentLoaded', async () => {
         try {
-            // 1. Initialize Leaflet Map
             const baseLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '© CartoDB' });
             map = L.map('map', { center: [31.7635, -106.495], zoom: 16, layers: [baseLayer] });
             
-            // Fix Flexbox resizing glitch for Leaflet
             setTimeout(() => { map.invalidateSize(); }, 250);
 
-            // 2. Build UI Controls
             generateDecadeButtons();
             updateLegend();
 
-            // 3. Fetch Data
             document.getElementById('scope-badge').textContent = "Fetching Data...";
-            const response = await fetch('./sunsetparking.GEOjson'); 
+            
+            // Appended cache-buster to ensure the newest file is pulled
+            const response = await fetch('./sunsetparking.GEOjson?v=' + new Date().getTime()); 
             
             if (!response.ok) throw new Error(`HTTP Error: ${response.status} - Could not find sunsetparking.GEOjson. Check the file name and path.`);
             
             geojsonData = await response.json();
             
-            // 4. Populate and Render
             initCharts();
             populateFilters();
             applyFilters(); 
             
         } catch (e) {
             console.error("Dashboard Initialization Error:", e);
-            
-            // Visually alert the user on screen if the script crashes
             document.getElementById('scope-badge').textContent = "ERROR";
             document.getElementById('scope-badge').classList.replace('bg-indigo-900', 'bg-red-600');
             
@@ -240,12 +239,14 @@
         const zoningFilter = document.getElementById('filter-zoning').value;
         const curbcutFilter = document.getElementById('filter-curbcut').value;
         const deltaFilter = document.getElementById('filter-delta').value;
+        const useFilter = document.getElementById('filter-use').value;
 
         const filteredFeatures = geojsonData.features.filter(f => {
             const p = f.properties;
             
             if (zoningFilter && p[PROPERTY_KEYS.zoning] !== zoningFilter) return false;
             if (curbcutFilter && p[PROPERTY_KEYS.curbCut] !== curbcutFilter) return false;
+            if (useFilter && p[PROPERTY_KEYS.useDesc] !== useFilter) return false;
             if (chartFilterTypology && p[PROPERTY_KEYS.typology] !== chartFilterTypology) return false;
 
             if (activeDecades.size > 0) {
@@ -281,10 +282,11 @@
         
         geojsonLayer = L.geoJSON(features, {
             style: f => {
-                let currentFillColor = '#cccccc'; // Fallback
+                let currentFillColor = '#cccccc'; 
                 
                 if (mode === 'parking') {
-                    const hasParking = f.properties[PROPERTY_KEYS.offStreet] === 'Yes' || f.properties[PROPERTY_KEYS.offStreet] === 'Y';
+                    const offVal = f.properties[PROPERTY_KEYS.offStreet] ? f.properties[PROPERTY_KEYS.offStreet].toString().trim().toLowerCase() : '';
+                    const hasParking = offVal === 'yes' || offVal === 'y' || offVal === 'true';
                     currentFillColor = hasParking ? '#10b981' : '#ef4444';
                 } else {
                     const high = parseFloat(f.properties[PROPERTY_KEYS.highElev]) || 0;
@@ -292,7 +294,6 @@
                     currentFillColor = getElevationColor(high - low);
                 }
 
-                // Explicitly set fillColor and border color
                 return { fillColor: currentFillColor, color: '#334155', weight: 1, fillOpacity: 0.75 };
             },
             onEachFeature: (f, l) => {
@@ -306,6 +307,7 @@
                         <hr class="my-1">
                         <b>Elevation Delta:</b> ${elevationDiff} ft<br>
                         <b>Year Built:</b> ${f.properties[PROPERTY_KEYS.yearBuilt] || 'N/A'}<br>
+                        <b>Use:</b> ${f.properties[PROPERTY_KEYS.useDesc] || 'N/A'}<br>
                         <b>Parking Type:</b> ${f.properties[PROPERTY_KEYS.typology] || 'None'}
                     </div>
                 `);
@@ -316,17 +318,23 @@
     function populateFilters() {
         const zoningSelect = document.getElementById('filter-zoning');
         const curbcutSelect = document.getElementById('filter-curbcut');
+        const useSelect = document.getElementById('filter-use');
         
         const zones = [...new Set(geojsonData.features.map(f => f.properties[PROPERTY_KEYS.zoning]))].filter(Boolean).sort();
         const curbcuts = [...new Set(geojsonData.features.map(f => f.properties[PROPERTY_KEYS.curbCut]))].filter(Boolean).sort();
+        const uses = [...new Set(geojsonData.features.map(f => f.properties[PROPERTY_KEYS.useDesc]))].filter(Boolean).sort();
         
         zones.forEach(z => zoningSelect.add(new Option(z, z)));
         curbcuts.forEach(c => curbcutSelect.add(new Option(c, c)));
+        uses.forEach(u => useSelect.add(new Option(u, u)));
     }
 
     function updateKPIs(features) {
         const total = features.length;
-        const withParking = features.filter(f => f.properties[PROPERTY_KEYS.offStreet] === 'Yes' || f.properties[PROPERTY_KEYS.offStreet] === 'Y').length;
+        const withParking = features.filter(f => {
+            const val = f.properties[PROPERTY_KEYS.offStreet] ? f.properties[PROPERTY_KEYS.offStreet].toString().trim().toLowerCase() : '';
+            return val === 'yes' || val === 'y' || val === 'true';
+        }).length;
         const rate = total === 0 ? 0 : Math.round((withParking / total) * 100);
         
         document.getElementById('parking-rate').textContent = `${rate}%`;
@@ -335,12 +343,14 @@
         document.getElementById('scope-badge').textContent = `Scope: ${total} Parcels`;
     }
 
+    // Updated tooltips to handle multi-dataset charts (Timeline)
     const percentageTooltip = {
         callbacks: {
             label: function(context) {
                 let percentage = context.raw.toFixed(1);
-                let absoluteCount = context.chart.countsArray[context.dataIndex];
-                return ` ${percentage}% (${absoluteCount} parcels)`;
+                let absoluteCount = context.dataset.countsArray[context.dataIndex];
+                let labelStr = context.dataset.label ? context.dataset.label + ': ' : '';
+                return ` ${labelStr}${percentage}% (${absoluteCount} parcels)`;
             }
         }
     };
@@ -350,137 +360,4 @@
         Chart.defaults.font.size = 11;
         
         // Slope Chart
-        charts.slope = new Chart(document.getElementById('chart-slope').getContext('2d'), {
-            type: 'bar',
-            data: { labels: ['0-3 ft', '3-6 ft', '6-10 ft', '10+ ft'], datasets: [{ data: [], backgroundColor: '#6366f1', hoverBackgroundColor: '#4f46e5' }] },
-            options: { 
-                indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
-                plugins: { legend: { display: false }, tooltip: percentageTooltip }, 
-                scales: { 
-                    x: { max: 100, title: { display: true, text: '% of Filtered Parcels', font: {weight: 'bold'} }, ticks: { callback: v => v + '%' } }
-                },
-                onClick: (e, activeEls) => {
-                    if(activeEls.length > 0) {
-                        const mappings = ["0-3", "3-6", "6-10", "10-999"];
-                        document.getElementById('filter-delta').value = mappings[activeEls[0].index];
-                        applyFilters();
-                    }
-                }
-            }
-        });
-
-        // Timeline Chart
-        charts.timeline = new Chart(document.getElementById('chart-timeline').getContext('2d'), {
-            type: 'bar',
-            data: { labels: [], datasets: [{ data: [], backgroundColor: '#10b981', hoverBackgroundColor: '#059669' }] },
-            options: { 
-                responsive: true, maintainAspectRatio: false, 
-                plugins: { legend: { display: false }, tooltip: percentageTooltip }, 
-                scales: { 
-                    y: { max: 100, title: { display: true, text: '% of Filtered Parcels', font: {weight: 'bold'} }, ticks: { callback: v => v + '%' } }
-                },
-                onClick: (e, activeEls) => {
-                    if(activeEls.length > 0) {
-                        const decadeLabel = charts.timeline.data.labels[activeEls[0].index];
-                        const decade = parseInt(decadeLabel);
-                        const btn = Array.from(document.querySelectorAll('.decade-btn')).find(b => parseInt(b.dataset.year) === decade);
-                        if(btn) { toggleDecade(btn, decade); applyFilters(); }
-                    }
-                }
-            }
-        });
-
-        // Typologies Chart
-        charts.typologies = new Chart(document.getElementById('chart-typologies').getContext('2d'), {
-            type: 'bar',
-            data: { labels: [], datasets: [{ data: [], backgroundColor: '#f59e0b', hoverBackgroundColor: '#d97706' }] },
-            options: { 
-                indexAxis: 'y', responsive: true, maintainAspectRatio: false, 
-                plugins: { legend: { display: false }, tooltip: percentageTooltip }, 
-                scales: { 
-                    x: { max: 100, title: { display: true, text: '% of Filtered Parcels', font: {weight: 'bold'} }, ticks: { callback: v => v + '%' } }
-                },
-                onClick: (e, activeEls) => {
-                    if(activeEls.length > 0) {
-                        const clickedType = charts.typologies.data.labels[activeEls[0].index];
-                        chartFilterTypology = (chartFilterTypology === clickedType) ? null : clickedType; 
-                        applyFilters();
-                    }
-                }
-            }
-        });
-    }
-
-    function updateChartsData(features) {
-        const total = features.length || 1; 
-
-        // 1. Elevation Aggregation
-        let slopeCounts = [0, 0, 0, 0];
-        features.forEach(f => {
-            const high = parseFloat(f.properties[PROPERTY_KEYS.highElev]) || 0;
-            const low = parseFloat(f.properties[PROPERTY_KEYS.lowElev]) || 0;
-            const diff = high - low;
-            if (diff <= 3) slopeCounts[0]++;
-            else if (diff <= 6) slopeCounts[1]++;
-            else if (diff <= 10) slopeCounts[2]++;
-            else slopeCounts[3]++;
-        });
-        charts.slope.countsArray = slopeCounts;
-        charts.slope.data.datasets[0].data = slopeCounts.map(c => (c / total) * 100);
-        charts.slope.update();
-
-        // 2. Timeline Aggregation
-        let decades = {};
-        features.forEach(f => {
-            let year = parseInt(f.properties[PROPERTY_KEYS.yearBuilt]);
-            if (year && year >= 1900) {
-                let decade = Math.floor(year / 10) * 10;
-                decades[decade] = (decades[decade] || 0) + 1;
-            }
-        });
-        const sortedDecades = Object.keys(decades).sort();
-        const timelineCounts = sortedDecades.map(d => decades[d]);
-        
-        charts.timeline.countsArray = timelineCounts;
-        charts.timeline.data.labels = sortedDecades.map(d => d + 's');
-        charts.timeline.data.datasets[0].data = timelineCounts.map(c => (c / total) * 100);
-        charts.timeline.update();
-
-        // 3. Typologies Aggregation
-        let types = {};
-        features.forEach(f => {
-            let type = f.properties[PROPERTY_KEYS.typology];
-            if (type && type.trim() !== "") {
-                types[type] = (types[type] || 0) + 1;
-            }
-        });
-        
-        const sortedTypes = Object.keys(types).sort((a, b) => types[b] - types[a]);
-        const typeCounts = sortedTypes.map(t => types[t]);
-
-        charts.typologies.countsArray = typeCounts;
-        charts.typologies.data.labels = sortedTypes;
-        charts.typologies.data.datasets[0].data = typeCounts.map(c => (c / total) * 100);
-        charts.typologies.update();
-    }
-
-    function resetFilters() {
-        document.getElementById('filter-zoning').value = '';
-        document.getElementById('filter-curbcut').value = '';
-        document.getElementById('filter-delta').value = '';
-        document.getElementById('map-color-mode').value = 'parking';
-        
-        chartFilterTypology = null;
-        activeDecades.clear();
-        
-        document.querySelectorAll('.decade-btn').forEach(btn => {
-            btn.classList.remove('active');
-            btn.classList.add('inactive');
-        });
-        
-        applyFilters();
-    }
-
-</script>
-</body>
-</html>
+        charts.slope = new Chart(document.
